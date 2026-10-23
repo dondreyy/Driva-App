@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Driva Prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --navy:#0B2545; --amber:#F5A524;
+  --bg:#F4F6F9; --surface:#FFFFFF; --text:#0B2545; --muted:#5B6B82; --line:#E1E6EE;
+  --soft:#EEF2F7; --ok:#17794A; --okbg:#E2F4EA; --warn:#B3261E;
+  --map:#E9EEF5; --road:#FFFFFF; --water:#CBDDF0; --route:#0B2545; --outer:#DCE3EC;
+  --head:'Bricolage Grotesque','Trebuchet MS',system-ui,sans-serif;
+  --body:'DM Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#07152A; --surface:#0F2440; --text:#EAF0F8; --muted:#9AABC4; --line:#21406A;
+    --soft:#14294A; --ok:#6FD6A0; --okbg:#10382A; --warn:#FF8A80;
+    --map:#0F2440; --road:#18335C; --water:#0A1D38; --route:#F5A524; --outer:#030B17;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#07152A; --surface:#0F2440; --text:#EAF0F8; --muted:#9AABC4; --line:#21406A;
+  --soft:#14294A; --ok:#6FD6A0; --okbg:#10382A; --warn:#FF8A80;
+  --map:#0F2440; --road:#18335C; --water:#0A1D38; --route:#F5A524; --outer:#030B17;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px);height:100%}
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;height:100%;background:var(--outer);color:var(--text);font-family:var(--body);font-size:15px;line-height:1.45;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;cursor:pointer}
+:focus-visible{outline:3px solid var(--amber);outline-offset:2px}
+.stage{height:100%;display:flex;align-items:center;justify-content:center}
+.phone{width:100%;height:100%;display:flex;flex-direction:column;background:var(--bg);overflow:hidden;position:relative}
+@media (min-width:520px){
+  .stage{padding:16px}
+  .phone{width:390px;height:min(840px,100%);border-radius:38px;border:8px solid #0B2545;box-shadow:0 24px 60px rgba(3,11,23,.35)}
+}
+.preview{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 14px;background:var(--navy);color:#fff;font-size:12px}
+.preview .lbl{opacity:.8}
+.pseg{display:flex;background:rgba(255,255,255,.12);border-radius:999px;padding:2px}
+.pseg button{border:0;background:transparent;color:#fff;padding:5px 14px;border-radius:999px;font-size:12px;font-weight:700}
+.pseg button[aria-pressed="true"]{background:var(--amber);color:var(--navy)}
+#screen{flex:1;overflow-y:auto;padding:18px 18px 28px;-webkit-overflow-scrolling:touch}
+#tabs{display:flex;border-top:1px solid var(--line);background:var(--surface)}
+#tabs[hidden]{display:none}
+#tabs button{flex:1;border:0;background:transparent;padding:9px 4px 11px;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:11px;color:var(--muted);font-weight:500}
+#tabs button[aria-current="page"]{color:var(--text);font-weight:700}
+#tabs button[aria-current="page"] svg{color:var(--navy)}
+:root[data-theme="dark"] #tabs button[aria-current="page"] svg{color:var(--amber)}
+h1,h2,h3{font-family:var(--head);margin:0;letter-spacing:-.01em}
+h1{font-size:26px;line-height:1.12;font-weight:800}
+h2{font-size:19px;font-weight:800}
+h3{font-size:15px;font-weight:800}
+p{margin:0}
+.muted{color:var(--muted)}
+.small{font-size:13px}
+.brand{display:flex;align-items:center;gap:9px;margin-bottom:16px}
+.brand .word{font-family:var(--head);font-weight:800;font-size:23px;letter-spacing:-.02em}
+.sp{height:14px}.sp2{height:22px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:16px}
+.hero{background:var(--navy);color:#fff;border-radius:22px;padding:18px;border:0}
+.hero .muted{color:#B7C4D8}
+.label{font-size:13px;font-weight:700;margin:16px 0 8px}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:6px;background:var(--soft);padding:5px;border-radius:16px}
+.seg button{border:0;background:transparent;border-radius:12px;padding:11px 8px;font-weight:700;font-size:14px;color:var(--muted);line-height:1.2}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--text);box-shadow:0 1px 3px rgba(11,37,69,.18)}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chips.scroll{flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px;margin:0 -18px;padding-left:18px;padding-right:18px}
+.chip{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:8px 14px;font-size:14px;white-space:nowrap;font-weight:500}
+.chip[aria-pressed="true"]{background:var(--navy);color:#fff;border-color:var(--navy);font-weight:700}
+:root[data-theme="dark"] .chip[aria-pressed="true"]{background:var(--amber);color:var(--navy);border-color:var(--amber)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .chip[aria-pressed="true"]{background:var(--amber);color:var(--navy);border-color:var(--amber)}}
+.field{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 14px}
+.field svg{flex:none;color:var(--muted)}
+.field .t{flex:1;min-width:0}
+.field .k{font-size:12px;color:var(--muted)}
+.btn{display:block;width:100%;border:0;border-radius:16px;padding:15px 18px;font-weight:800;font-size:16px;background:var(--amber);color:var(--navy);text-align:center}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.ghost{background:transparent;border:1.5px solid var(--line);color:var(--text);font-weight:700}
+.btn.sm{width:auto;display:inline-flex;align-items:center;gap:6px;padding:9px 14px;font-size:14px;border-radius:12px}
+.link{border:0;background:none;padding:6px 0;color:var(--muted);font-weight:700;display:inline-flex;align-items:center;gap:4px}
+.row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.row+.row{margin-top:10px}
+.divider{height:1px;background:var(--line);margin:12px 0}
+.total{font-family:var(--head);font-weight:800;font-size:24px}
+.stepper{display:flex;align-items:center;gap:14px}
+.stepper button{width:38px;height:38px;border-radius:12px;border:1px solid var(--line);background:var(--surface);font-size:20px;font-weight:700;line-height:1}
+.avatar{width:48px;height:48px;border-radius:50%;background:var(--amber);color:var(--navy);display:grid;place-items:center;font-family:var(--head);font-weight:800;flex:none}
+.vet{display:inline-flex;align-items:center;gap:5px;background:var(--okbg);color:var(--ok);border-radius:999px;padding:3px 10px 3px 7px;font-size:12px;font-weight:700}
+.tag{display:inline-block;background:var(--soft);border-radius:8px;padding:3px 9px;font-size:12px;font-weight:700}
+.map{width:100%;height:auto;border-radius:16px;display:block;border:1px solid var(--line)}
+.m-bg{fill:var(--map)}.m-road{stroke:var(--road);stroke-width:9;fill:none}.m-water{fill:var(--water)}
+.m-route{stroke:var(--route);stroke-width:4;fill:none;stroke-dasharray:2 8;stroke-linecap:round}
+.m-origin{fill:var(--navy);stroke:#fff;stroke-width:3}
+.m-dest{fill:var(--amber);stroke:var(--navy);stroke-width:2.5}
+.m-car{fill:var(--amber);stroke:var(--navy);stroke-width:3}
+.pulse{width:120px;height:120px;border-radius:50%;background:var(--amber);margin:30px auto 18px;display:grid;place-items:center;animation:pulse 1.4s ease-out infinite;color:var(--navy)}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(245,165,36,.55)}100%{box-shadow:0 0 0 38px rgba(245,165,36,0)}}
+@media (prefers-reduced-motion: reduce){.pulse{animation:none}}
+.steps{display:flex;gap:6px;margin:12px 0 4px}
+.steps i{flex:1;height:5px;border-radius:5px;background:var(--line)}
+.steps i.on{background:var(--amber)}
+.photos{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.photo{border:1.5px dashed var(--line);background:var(--surface);border-radius:14px;padding:14px 4px;display:flex;flex-direction:column;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--muted)}
+.photo.done{border:1.5px solid var(--ok);background:var(--okbg);color:var(--ok)}
+.stars{display:flex;gap:6px;justify-content:center}
+.stars button{border:0;background:none;padding:2px;color:var(--line)}
+.stars button.on{color:var(--amber)}
+.demo{margin-top:14px;text-align:center}
+.demo button{border:1px dashed var(--muted);background:transparent;border-radius:10px;padding:7px 12px;font-size:12px;color:var(--muted)}
+.toggle{width:54px;height:32px;border-radius:999px;border:0;background:var(--line);position:relative;padding:0;flex:none}
+.toggle::after{content:"";position:absolute;top:4px;left:4px;width:24px;height:24px;border-radius:50%;background:#fff;transition:transform .18s}
+.toggle[aria-pressed="true"]{background:var(--ok)}
+.toggle[aria-pressed="true"]::after{transform:translateX(22px)}
+.bars{display:flex;align-items:flex-end;gap:8px;height:120px}
+.bars div{flex:1;background:var(--soft);border-radius:8px 8px 3px 3px;position:relative;min-height:6px}
+.bars div.hi{background:var(--amber)}
+.bars span{position:absolute;bottom:-20px;left:0;right:0;text-align:center;font-size:11px;color:var(--muted)}
+.check{display:flex;gap:10px;align-items:flex-start}
+.check .ic{flex:none;width:24px;height:24px;border-radius:50%;background:var(--okbg);color:var(--ok);display:grid;place-items:center}
+.toast{position:absolute;left:16px;right:16px;bottom:78px;background:var(--navy);color:#fff;border-radius:14px;padding:12px 14px;font-size:14px;z-index:5;border:1px solid rgba(255,255,255,.15)}
+.toast[hidden]{display:none}
+.timer{font-family:var(--head);font-weight:800;color:var(--amber)}
+.pin{font-family:var(--head);font-weight:800;font-size:40px;letter-spacing:6px;text-align:center;margin:6px 0 8px}
+.pininput{width:100%;margin-top:8px;padding:12px;border-radius:14px;border:1.5px solid var(--line);background:var(--surface);color:var(--text);font-family:var(--head);font-weight:800;font-size:24px;letter-spacing:10px;text-align:center}
+.kv{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+.kv b{display:block;font-family:var(--head);font-size:22px;font-weight:800}
+.review{border-top:1px solid var(--line);padding-top:10px;margin-top:10px}
+.review:first-of-type{border-top:0;padding-top:0;margin-top:0}
+.fl{display:block;margin-bottom:12px}
+.fl span{display:block;font-size:13px;font-weight:700;margin-bottom:6px}
+.inp{width:100%;padding:13px 14px;border-radius:14px;border:1.5px solid var(--line);background:var(--surface);color:var(--text);font:inherit;font-size:16px}
+.cb{display:flex;gap:10px;align-items:flex-start;text-align:left;border:0;background:none;padding:6px 0;font-size:14px;width:100%}
+.cb .box{flex:none;width:24px;height:24px;border-radius:7px;border:1.5px solid var(--muted);display:grid;place-items:center;color:var(--navy);margin-top:1px}
+.cb[aria-pressed="true"] .box{background:var(--amber);border-color:var(--amber)}
+.crit{margin:8px 0 4px;padding-left:18px;font-size:14px}
+.crit li{margin-bottom:4px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.check .ic.amber{background:var(--amber);color:var(--navy)}
+.check .ic.grey{background:var(--soft);color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="phone" id="phone">
+    <div class="preview">
+      <span class="lbl">Prototype preview as</span>
+      <div class="pseg" role="group" aria-label="Preview as">
+        <button type="button" data-act="role" data-arg="signup" id="rs">Sign up</button>
+        <button type="button" data-act="role" data-arg="client" id="rc">Client</button>
+        <button type="button" data-act="role" data-arg="driver" id="rd">Driver</button>
+      </div>
+    </div>
+    <main id="screen"></main>
+    <nav id="tabs" aria-label="Main"></nav>
+    <div class="toast" id="toast" role="status" hidden></div>
+  </div>
+</div>
+
+<script>
+(function(){
+const $=(s,r=document)=>r.querySelector(s);
+const reduce=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const fmt=n=>'\u20A6'+Math.round(n).toLocaleString('en-NG');
+const svg=(p,s=20,extra='')=>`<svg viewBox="0 0 24 24" width="${s}" height="${s}" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ${extra}>${p}</svg>`;
+const P={
+ pin:'<path d="M12 21s-6-5.2-6-10a6 6 0 1 1 12 0c0 4.8-6 10-6 10z"/><circle cx="12" cy="11" r="2.2"/>',
+ clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+ car:'<path d="M4 16v-4l2-5h12l2 5v4"/><path d="M3 16h18v3H3z"/><path d="M6 12h12"/>',
+ shield:'<path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/>',
+ check:'<path d="M5 12l4.5 4.5L19 7"/>',
+ star:'<path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/>',
+ phone:'<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/>',
+ chat:'<path d="M4 5h16v11H9l-5 4z"/>',
+ home:'<path d="M4 11l8-7 8 7v9h-5v-6H9v6H4z"/>',
+ list:'<path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/>',
+ building:'<path d="M5 21V4h9v17M14 9h5v12M8 8h3M8 12h3M8 16h3"/>',
+ user:'<circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/>',
+ chart:'<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
+ alert:'<path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17h.01"/>',
+ camera:'<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>',
+ share:'<circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8.2 10.8l7.6-3.6M8.2 13.2l7.6 3.6"/>',
+ back:'<path d="M15 5l-7 7 7 7"/>',
+ nav:'<path d="M12 3l7 17-7-4-7 4z"/>'
+};
+const ic=(n,s)=>svg(P[n],s);
+const logo=(s=36)=>`<svg width="${s}" height="${s}" viewBox="0 0 48 48" aria-hidden="true"><rect width="48" height="48" rx="12" fill="#0B2545"/><g fill="none" stroke="#F5A524" stroke-width="3" stroke-linecap="round"><circle cx="17" cy="24" r="9.5"/><path d="M8 24h6M20 24h6M17 29v5.5" stroke-width="2.6"/><path d="M26.5 24H41M35 24v6M40.5 24v5"/></g><circle cx="17" cy="24" r="2.4" fill="#F5A524"/></svg>`;
+
+const PLACES=[{n:'Ikeja',km:21},{n:'Victoria Island',km:9},{n:'Ikoyi',km:11},{n:'Yaba',km:24},{n:'Surulere',km:22},{n:'Ajah',km:14},{n:'Murtala Muhammed Airport',km:31}];
+const CARS=[{n:'Toyota Camry 2018',p:'LND 482 KJ'},{n:'Lexus RX 350',p:'ABC 120 EK'}];
+const WHEN=[{l:'Now',night:0},{l:'Tonight 10:00 pm',night:1},{l:'Tomorrow 7:00 am',night:0}];
+const ERR=['Pick someone up','Run an errand','Take car for service','Deliver car'];
+const SHOTS=['Front','Back','Left side','Right side','Fuel and dash'];
+const FEE=0.15;
+
+const S={role:'signup',tab:'book',screen:'home',type:'ride',dest:0,hours:2,when:0,car:0,errand:0,stage:0,photos:[0,0,0,0,0],rating:0,tip:0,
+  dTab:'home',dScreen:'home',dOnline:true,dStage:0,dPhotos:[0,0,0,0,0],dDeclined:false,apStart:0,tripStart:0,
+  pin:'4827',selfie:0,dEndPhotos:[0,0,0,0,0],dRating:0,alert:0,dPinVal:'',dPinOk:false,
+  su:{who:null,step:0,approved:false},f:{staff:3,cars:2,cycle:'Monthly invoice'},chk:{},feePlan:false};
+let raf=0,findT=0,toastT=0,lastKey='';
+
+function quote(){
+  const w=WHEN[S.when];
+  const base=S.type==='ride'?S.hours*3500:2500+Math.round(PLACES[S.dest].km*300/100)*100;
+  const night=w.night?1500:0;
+  return {base,night,total:base+night};
+}
+const typeLabel=()=>S.type==='ride'?'Ride with me':'Drive my car alone';
+const route=()=>'Lekki Phase 1 to '+PLACES[S.dest].n;
+const isSolo=()=>S.type==='solo';
+
+function toast(msg){const t=$('#toast');t.textContent=msg;t.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>{t.hidden=true},2600)}
+
+function mapSVG(mode,still){
+  return `<svg class="map" viewBox="0 0 340 200" role="img" aria-label="Trip map">
+  <rect class="m-bg" width="340" height="200"/>
+  <path class="m-water" d="M0 188C80 172 160 196 340 176V200H0z"/>
+  <path class="m-road" d="M0 62H340M0 132H340M72 0V200M184 0V200M272 0V200"/>
+  <path id="route" class="m-route" d="M30 160C90 150 110 90 170 95S270 60 310 35"/>
+  <path id="approach" fill="none" stroke="none" d="M12 28C44 78 18 122 30 160"/>
+  <circle class="m-origin" cx="30" cy="160" r="8"/>
+  <g transform="translate(310 35)"><path class="m-dest" d="M0 10C-9 -2 -9 -14 0 -14S9 -2 0 10z"/><circle r="3" fill="#0B2545"/></g>
+  <g id="car" data-mode="${mode}" data-still="${still?1:0}"><circle class="m-car" r="11"/><circle r="3.5" fill="#0B2545"/></g>
+  </svg>`;
+}
+
+function animateCar(){
+  const car=$('#car'); if(!car) return;
+  const mode=car.dataset.mode, still=car.dataset.still==='1';
+  const path=$('#'+mode); const len=path.getTotalLength();
+  const dur=mode==='approach'?9000:24000;
+  const start=mode==='approach'?S.apStart:S.tripStart;
+  const total=mode==='approach'?6:18;
+  function step(){
+    let p=still?1:Math.min(1,(performance.now()-start)/dur);
+    if(reduce&&!still) p=0.6;
+    const pt=path.getPointAtLength(p*len);
+    car.setAttribute('transform','translate('+pt.x+' '+pt.y+')');
+    const eta=$('#eta');
+    if(eta) eta.textContent=mode==='approach'?(Math.max(1,Math.ceil((1-p)*total))+' min away'):(Math.max(1,Math.ceil((1-p)*total))+' min to destination');
+    if(p<1&&!reduce) raf=requestAnimationFrame(step);
+  }
+  step();
+}
+
+/* ---------- CLIENT SCREENS ---------- */
+function cHome(){
+  const q=quote();
+  return `
+  <div class="brand">${logo(38)}<span class="word">Driva</span></div>
+  <h1>Where should your driver take you?</h1>
+  <p class="muted small" style="margin-top:6px">Verified drivers for your own car. Pay per trip.</p>
+  <div class="sp"></div>
+  <div class="seg" role="group" aria-label="Trip type">
+    <button type="button" data-act="type" data-arg="ride" aria-pressed="${S.type==='ride'}">Ride with me</button>
+    <button type="button" data-act="type" data-arg="solo" aria-pressed="${S.type==='solo'}">Drive my car alone</button>
+  </div>
+  <p class="muted small" style="margin-top:8px">${S.type==='ride'?'You sit in the car and your driver takes the wheel. Priced by the hour, so multiple stops are fine.':'Your driver moves the car without you, for errands, pickups or deliveries. Fixed price for the trip.'}</p>
+
+  <div class="label">Route</div>
+  <div class="field">${ic('pin')}<div class="t"><div class="k">Pickup</div><div>Lekki Phase 1, Lagos</div></div><span class="tag">Current location</span></div>
+  <div style="height:8px"></div>
+  <div class="chips scroll" role="group" aria-label="Destination">
+    ${PLACES.map((p,i)=>`<button type="button" class="chip" data-act="dest" data-arg="${i}" aria-pressed="${S.dest===i}">${p.n}</button>`).join('')}
+  </div>
+
+  ${S.type==='ride'?`
+  <div class="label">How long do you need the driver?</div>
+  <div class="card row"><div><strong>${S.hours} hours</strong><div class="muted small">${fmt(3500)} per hour, 2 hours minimum</div></div>
+  <div class="stepper"><button type="button" data-act="hours" data-arg="-1" aria-label="Fewer hours">&minus;</button><button type="button" data-act="hours" data-arg="1" aria-label="More hours">+</button></div></div>`:`
+  <div class="label">What should the driver do?</div>
+  <div class="chips" role="group" aria-label="Task">${ERR.map((e,i)=>`<button type="button" class="chip" data-act="errand" data-arg="${i}" aria-pressed="${S.errand===i}">${e}</button>`).join('')}</div>`}
+
+  <div class="label">Your car</div>
+  <div class="chips" role="group" aria-label="Car">${CARS.map((c,i)=>`<button type="button" class="chip" data-act="car" data-arg="${i}" aria-pressed="${S.car===i}">${c.n}</button>`).join('')}</div>
+
+  <div class="label">When</div>
+  <div class="chips" role="group" aria-label="When">${WHEN.map((w,i)=>`<button type="button" class="chip" data-act="when" data-arg="${i}" aria-pressed="${S.when===i}">${w.l}</button>`).join('')}</div>
+
+  <div class="sp2"></div>
+  <button type="button" class="btn" data-act="quote">See price: ${fmt(q.total)}</button>`;
+}
+
+function cQuote(){
+  const q=quote();
+  return `
+  <button type="button" class="link" data-act="back">${ic('back',18)} Edit trip</button>
+  <h1 style="margin-top:6px">Confirm your trip</h1>
+  <div class="sp"></div>
+  <div class="card">
+    <div class="row"><span class="tag">${typeLabel()}</span><span class="muted small">${WHEN[S.when].l}</span></div>
+    <div class="sp"></div>
+    <div class="row" style="justify-content:flex-start">${ic('pin')}<strong>${route()}</strong></div>
+    <div class="row" style="justify-content:flex-start;margin-top:8px">${ic('car')}<span>${CARS[S.car].n}, ${CARS[S.car].p}</span></div>
+    ${isSolo()?`<div class="row" style="justify-content:flex-start;margin-top:8px">${ic('list')}<span>${ERR[S.errand]}</span></div>`:''}
+  </div>
+  <div class="label">Price</div>
+  <div class="card">
+    <div class="row"><span>${S.type==='ride'?S.hours+' hours at '+fmt(3500):'Flat fare, about '+PLACES[S.dest].km+' km'}</span><span>${fmt(q.base)}</span></div>
+    ${q.night?`<div class="row"><span>Night trip</span><span>${fmt(q.night)}</span></div>`:''}
+    <div class="divider"></div>
+    <div class="row"><strong>Total</strong><span class="total">${fmt(q.total)}</span></div>
+    <p class="muted small" style="margin-top:8px">The price is fixed once a driver accepts. Tolls and fuel are paid by you. Waiting time beyond 15 minutes is ${fmt(1000)} per 30 minutes.</p>
+  </div>
+  <div class="sp"></div>
+  <div class="check"><span class="ic">${ic('shield',14)}</span><span class="small">Every Driva driver is checked by VeriQuest before taking trips: identity, licence, criminal record, and in person visits to their home and two guarantors.</span></div>
+  <div class="check" style="margin-top:10px"><span class="ic">${ic('check',14)}</span><span class="small">Trip protection is included, and damage claims are handled in the app.</span></div>
+  <div class="check" style="margin-top:10px"><span class="ic">${ic('check',14)}</span><span class="small">Your payment is held by Driva until the trip ends. Both of you rate each other afterwards.</span></div>
+  <div class="sp2"></div>
+  <button type="button" class="btn" data-act="request">Request a driver</button>`;
+}
+
+function cFinding(){
+  return `<div style="text-align:center;padding-top:40px">
+  <div class="pulse">${ic('car',48)}</div>
+  <h2>Finding a verified driver</h2>
+  <p class="muted" style="margin-top:6px">Checking drivers near Lekki Phase 1</p>
+  <div class="sp2"></div>
+  <button type="button" class="btn ghost" style="max-width:220px;margin:0 auto" data-act="cancel">Cancel request</button></div>`;
+}
+
+function driverCard(){
+  return `<div class="card"><div class="row" style="justify-content:flex-start;gap:12px">
+    <div class="avatar">EO</div>
+    <div style="flex:1;min-width:0"><h3>Emeka Okafor</h3>
+    <div class="muted small">${ic('star',13).replace('<svg','<svg style="color:var(--amber);fill:var(--amber);vertical-align:-2px"')} 4.9 &nbsp;|&nbsp; 312 trips</div>
+    <div style="margin-top:6px"><span class="vet">${ic('shield',14)} Vetted by VeriQuest</span></div></div>
+    <div style="display:flex;gap:8px"><button type="button" class="btn sm ghost" data-act="toast" data-arg="Calls go through Driva so your number stays private. Available in the full app" aria-label="Call driver" style="padding:9px 11px">${ic('phone',18)}</button><button type="button" class="btn sm ghost" data-act="toast" data-arg="Chat goes through Driva so your number stays private. Available in the full app" aria-label="Message driver" style="padding:9px 11px">${ic('chat',18)}</button></div>
+  </div>
+  <button type="button" class="btn ghost sm" style="margin-top:12px;width:100%;justify-content:center" data-act="viewDriver">See full driver profile</button></div>`;
+}
+
+function cLive(){
+  const st=S.stage;
+  const heads=['Emeka is on the way','Emeka has arrived',isSolo()?'Your car is on the move':'Trip in progress'];
+  const mode=st<2?'approach':'route';
+  const still=st===1;
+  let body='';
+  if(st===0) body=`<div class="card row"><div><strong>Heading to your pickup point</strong><div class="muted small">Lekki Phase 1</div></div><span class="timer" id="eta"></span></div>`;
+  if(st===1){
+    if(isSolo()){
+      const done=S.photos.every(Boolean);
+      body=`<div class="card"><h3>Handover check</h3><p class="muted small" style="margin:4px 0 12px">Emeka photographs your car before leaving. Tap a photo to simulate capture.</p>
+      <div class="photos">${SHOTS.map((s,i)=>`<button type="button" class="photo ${S.photos[i]?'done':''}" data-act="photo" data-arg="${i}" aria-pressed="${!!S.photos[i]}">${ic(S.photos[i]?'check':'camera',22)}${s}</button>`).join('')}</div>
+      <div class="sp"></div><button type="button" class="btn" data-act="confirmHandover" ${done?'':'disabled'}>Confirm handover</button></div>`;
+    } else body=`<div class="card"><h3>Emeka is at your pickup point</h3><p class="muted small" style="margin-top:4px">Your trip starts when you are in the car and Emeka taps start.</p></div>`;
+  }
+  if(st===2) body=`<div class="card row"><div><strong>${isSolo()?'Live tracking is on':'Heading to '+PLACES[S.dest].n}</strong><div class="muted small">${isSolo()?'Share this link with the person receiving the car':'Driving '+CARS[S.car].n}</div></div><span class="timer" id="eta"></span></div>
+  <div class="sp"></div>
+  <div style="display:flex;gap:10px"><button type="button" class="btn ghost sm" style="flex:1;justify-content:center" data-act="toast" data-arg="A live tracking link would be shared here">${ic('share',16)} Share trip</button><button type="button" class="btn ghost sm" style="flex:1;justify-content:center;color:var(--warn)" data-act="toast" data-arg="In the full app this alerts Driva support and your emergency contacts">${ic('alert',16)} Emergency</button></div>`;
+  if(st===1) body=`<div class="card" style="border:2px solid var(--amber)"><h3>Your trip PIN</h3><div class="pin">${S.pin.split('').join(' ')}</div><p class="muted small">Check that this is Emeka: same face as the profile photo, and the profile shows Vetted by VeriQuest. Give him the PIN only then.</p></div><div class="sp"></div>`+body;
+  if(st===2&&S.alert) body=`<div class="card" style="border:2px solid var(--warn);margin-bottom:12px"><strong style="color:var(--warn)">Route change detected</strong><p class="small" style="margin:4px 0 10px">Emeka has left the agreed route. Driva support has been notified and is checking in.</p><div style="display:flex;gap:8px"><button type="button" class="btn ghost sm" data-act="toast" data-arg="Calling Driva support is available in the full app">Call support</button><button type="button" class="btn ghost sm" data-act="clearAlert">He is avoiding traffic</button></div></div>`+body;
+  return `<h1>${heads[st]}</h1>
+  <div class="steps" aria-hidden="true"><i class="on"></i><i class="${st>=1?'on':''}"></i><i class="${st>=2?'on':''}"></i></div>
+  <div class="sp"></div>
+  ${driverCard()}
+  <div class="sp"></div>
+  ${mapSVG(mode,still)}
+  <div class="sp"></div>
+  ${body}
+  <div class="demo"><button type="button" data-act="next">Prototype only: go to next step</button>${st===2&&!S.alert?' <button type="button" data-act="alert">Prototype only: simulate route change</button>':''}</div>`;
+}
+
+function cSummary(){
+  const q=quote();
+  return `<div style="text-align:center;padding-top:6px"><div class="avatar" style="margin:0 auto 10px;background:var(--okbg);color:var(--ok)">${ic('check',26)}</div>
+  <h1>Trip complete</h1><p class="muted" style="margin-top:4px">${route()}</p></div>
+  <div class="sp"></div>
+  <div class="card">
+    <div class="row"><span class="muted">Trip type</span><span>${typeLabel()}</span></div>
+    <div class="row"><span class="muted">Driver</span><span>Emeka Okafor</span></div>
+    ${isSolo()?`<div class="row"><span class="muted">Distance</span><span>${PLACES[S.dest].km} km</span></div><div class="row"><span class="muted">Return photos</span><span style="color:var(--ok);font-weight:700">Match start photos</span></div>`:`<div class="row"><span class="muted">Time</span><span>${S.hours} hours</span></div>`}
+    <div class="divider"></div>
+    <div class="row"><strong>Total paid</strong><span class="total">${fmt(q.total+S.tip)}</span></div>
+    <p class="muted small" style="margin-top:6px">Paid from your Driva wallet. A receipt was sent to your email.</p>
+  </div>
+  <div class="label" style="text-align:center">Rate Emeka</div>
+  <div class="stars" role="group" aria-label="Rating">${[1,2,3,4,5].map(n=>`<button type="button" class="${S.rating>=n?'on':''}" data-act="rate" data-arg="${n}" aria-label="${n} stars">${svg(P.star,34,S.rating>=n?'style="fill:currentColor"':'')}</button>`).join('')}</div>
+  <div class="label" style="text-align:center">Add a tip</div>
+  <div class="chips" style="justify-content:center">${[0,500,1000,2000].map(t=>`<button type="button" class="chip" data-act="tip" data-arg="${t}" aria-pressed="${S.tip===t}">${t?fmt(t):'No tip'}</button>`).join('')}</div>
+  <div class="sp2"></div>
+  <button type="button" class="btn" data-act="done">Done</button>
+  <div style="text-align:center;margin-top:8px"><button type="button" class="link" data-act="toast" data-arg="Problems go to Driva support, and payment stays held until resolved">Report a problem with this trip</button></div>`;
+}
+
+function cDriverProfile(){
+  const checks=[['Identity (NIN)','14 Jan 2026'],['Driver licence','14 Jan 2026, valid to 2029'],['Home address, field visit','16 Jan 2026'],['2 guarantors, visited in person','17 Jan 2026'],['Criminal record check','18 Jan 2026, cleared']];
+  const rev=[['Tolu A.','Careful with my Lexus and on time. Sent photos before and after.'],['Hauwa S.','Calm driver and knows the Lagos routes well.'],['Chidi N.','Professional. Handled the airport run without any fuss.']];
+  return `<button type="button" class="link" data-act="backLive">${ic('back',18)} Back to trip</button>
+  <div style="text-align:center;margin-top:6px"><div class="avatar" style="width:88px;height:88px;font-size:30px;margin:0 auto 10px">EO</div><h1>Emeka Okafor</h1>
+  <div style="margin-top:8px"><span class="vet">${ic('shield',14)} Vetted by VeriQuest</span></div></div>
+  <div class="sp"></div>
+  <div class="card"><div class="kv"><div><b>4.9</b><span class="muted small">Rating</span></div><div><b>312</b><span class="muted small">Trips completed</span></div><div><b>6 years</b><span class="muted small">Driving experience</span></div><div><b>97%</b><span class="muted small">On time arrivals</span></div></div></div>
+  <div class="label">About</div>
+  <div class="card"><div class="row"><span class="muted">Languages</span><span>English, Yoruba, Pidgin</span></div><div class="row"><span class="muted">Cars</span><span>Sedans and SUVs</span></div><div class="row"><span class="muted">Gearbox</span><span>Automatic and manual</span></div><div class="row"><span class="muted">On Driva since</span><span>March 2023</span></div></div>
+  <div class="label">Checked by VeriQuest</div>
+  <div class="card">${checks.map(c=>`<div class="check" style="margin-bottom:10px"><span class="ic">${ic('check',14)}</span><div><strong>${c[0]}</strong><div class="muted small">${c[1]}</div></div></div>`).join('')}
+  <p class="muted small">Next re check due January 2027. Driva removes the badge if a re check lapses. Documents and personal numbers are never shown in the app.</p></div>
+  <div class="label">Trust and safety</div>
+  <div class="card"><div class="row"><span class="muted">Solo trips</span><strong style="color:var(--ok)">Cleared</strong></div><div class="row"><span class="muted">Open complaints</span><span>0</span></div><div class="row"><span class="muted">Resolved complaints</span><span>1 (late arrival)</span></div><div class="row"><span class="muted">Selfie check today</span><strong style="color:var(--ok)">Passed</strong></div></div>
+  <div class="label">Recent reviews</div>
+  <div class="card">${rev.map(r=>`<div class="review"><strong>${r[0]}</strong><div class="small muted" style="margin-top:2px">${r[1]}</div></div>`).join('')}</div>
+  <div class="sp"></div>
+  <button type="button" class="btn ghost" data-act="toast" data-arg="Reports go straight to Driva support in the full app">Report a concern</button>`;
+}
+
+function cTrips(){
+  const rows=[['Ride with me','Lekki Phase 1 to Ikoyi','Mon, 28 Sep',fmt(7000),'Tunde A.'],['Drive my car alone','Ajah to Yaba','Fri, 25 Sep',fmt(9700),'Emeka O.'],['Ride with me','Ikeja to Lekki Phase 1','Tue, 22 Sep',fmt(14000),'Segun B.']];
+  return `<h1>Your trips</h1><div class="sp"></div>`+rows.map(r=>`<div class="card" style="margin-bottom:10px"><div class="row"><span class="tag">${r[0]}</span><strong>${r[3]}</strong></div><div style="margin-top:8px"><strong>${r[1]}</strong></div><div class="muted small">${r[2]} with ${r[4]}</div></div>`).join('');
+}
+
+function cBusiness(){
+  const staff=[['Folake M.','Operations','6 trips',fmt(62500)],['Chidi N.','Sales','5 trips',fmt(71000)],['Hauwa S.','Admin','3 trips',fmt(51000)]];
+  return `<h1>Business account</h1><p class="muted small" style="margin-top:4px">Adeyemi and Co Logistics (sample)</p><div class="sp"></div>
+  <div class="card hero"><div class="muted small">September spend</div><div class="total" style="font-size:32px;margin-top:2px">${fmt(184500)}</div><div class="muted small" style="margin-top:4px">14 trips across 3 staff and 2 company cars</div></div>
+  <div class="label">By staff member</div>
+  ${staff.map(s=>`<div class="card" style="margin-bottom:10px"><div class="row"><div><strong>${s[0]}</strong><div class="muted small">${s[1]} &nbsp;|&nbsp; ${s[2]}</div></div><strong>${s[3]}</strong></div></div>`).join('')}
+  <div class="sp"></div>
+  <button type="button" class="btn" data-act="toast" data-arg="Invoices download in the full app">Download September invoice</button>`;
+}
+
+/* ---------- DRIVER SCREENS ---------- */
+function selfieGate(){
+  if(S.selfie===1) return `<div class="card" style="text-align:center"><div class="pulse" style="width:80px;height:80px;margin:8px auto 14px">${ic('camera',34)}</div><strong>Matching your selfie</strong><p class="muted small" style="margin-top:4px">Comparing with your VeriQuest verified ID</p></div>`;
+  return `<div class="card"><h3>Confirm it is you</h3><p class="muted small" style="margin:4px 0 12px">Take a quick selfie to start your shift. We match it to the photo on your verified ID, so only you can drive on your account.</p><button type="button" class="btn" data-act="selfie">Take selfie</button></div>`;
+}
+function dHome(){
+  const q=quote(), inst=S.feePlan?3000:0, earn=Math.round(q.total*(1-FEE))-inst;
+  return `<div class="brand">${logo(38)}<span class="word">Driva</span><span class="tag" style="margin-left:auto">Driver</span></div>
+  <div class="card row"><div><strong>${S.dOnline?'You are online':'You are offline'}</strong><div class="muted small">${S.dOnline?'Requests near Lekki will appear here':'Go online to receive trip requests'}</div></div>
+  <button type="button" class="toggle" data-act="online" aria-pressed="${S.dOnline}" aria-label="Online status"></button></div>
+  <div class="sp"></div>
+  <div class="card hero"><div class="muted small">Today</div><div class="total" style="font-size:32px;margin-top:2px">${fmt(18700)}</div><div class="muted small" style="margin-top:4px">3 trips &nbsp;|&nbsp; 4.9 rating</div></div>
+  <div class="label">New request</div>
+  ${S.dOnline&&S.selfie!==2?selfieGate():S.dOnline&&!S.dDeclined?`<div class="card" style="border:2px solid var(--amber)">
+    <div class="row"><span class="tag">${typeLabel()}</span><span class="muted small">${WHEN[S.when].l}</span></div>
+    <div style="margin-top:10px"><strong>${route()}</strong></div>
+    <div class="muted small">${S.type==='ride'?S.hours+' hours, client rides along':PLACES[S.dest].km+' km, '+ERR[S.errand].toLowerCase()}</div>
+    <div class="divider"></div>
+    <div class="row"><span class="muted">Trip fare</span><span>${fmt(q.total)}</span></div>
+    <div class="row"><span class="muted">Driva fee (15%)</span><span>&minus;${fmt(q.total-earn-inst)}</span></div>${inst?`<div class="row"><span class="muted">Vetting fee, trip 1 of 5</span><span>&minus;${fmt(inst)}</span></div>`:''}
+    <div class="row"><strong>You earn</strong><span class="total">${fmt(earn)}</span></div>
+    <div class="sp"></div>
+    <div style="display:flex;gap:10px"><button type="button" class="btn ghost" style="flex:1" data-act="decline">Decline</button><button type="button" class="btn" style="flex:2" data-act="accept">Accept trip</button></div>
+  </div>`:`<div class="card" style="text-align:center"><strong>${S.dOnline?'No requests right now':'You are offline'}</strong><p class="muted small" style="margin-top:4px">${S.dOnline?'Stay online. New trips near you appear here.':'Switch on to start receiving trips.'}</p>${S.dOnline?`<div class="sp"></div><button type="button" class="btn ghost sm" data-act="resetReq">Show a sample request</button>`:''}</div>`}`;
+}
+
+function pinBox(){
+  return `<div class="card"><label for="dpin" class="small" style="font-weight:700">Trip PIN from the client</label><input id="dpin" class="pininput" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="0000" value="${S.dPinVal}"><p class="muted small" style="margin-top:8px">Do not start the trip without the PIN. Prototype PIN: ${S.pin}</p></div>`;
+}
+function dTrip(){
+  const st=S.dStage, q=quote();
+  const heads=['Head to pickup','Ready to start',isSolo()?'Driving the car':'Trip in progress','Photograph the car again'];
+  const mode=st<2?'approach':'route', still=st===1||st===3;
+  let body='';
+  if(st===0) body=`<div class="card row"><div><strong>Lekki Phase 1</strong><div class="muted small">Client: Tolu A.</div></div><span class="timer" id="eta"></span></div><div class="sp"></div><button type="button" class="btn ghost" data-act="toast" data-arg="Turn by turn navigation opens in the full app" style="margin-bottom:10px">${ic('nav',18)} Navigate to pickup</button><button type="button" class="btn" data-act="dArrived">I have arrived</button>`;
+  if(st===1){
+    if(isSolo()){
+      const done=S.dPhotos.every(Boolean);
+      body=`<div class="card"><h3>Photograph the car</h3><p class="muted small" style="margin:4px 0 12px">Take all five photos before you start. They protect you and the owner.</p><div class="photos">${SHOTS.map((s,i)=>`<button type="button" class="photo ${S.dPhotos[i]?'done':''}" data-act="dPhoto" data-arg="${i}" aria-pressed="${!!S.dPhotos[i]}">${ic(S.dPhotos[i]?'check':'camera',22)}${s}</button>`).join('')}</div></div><div class="sp"></div>${pinBox()}<div class="sp"></div><button type="button" class="btn" id="dstartbtn" data-act="dStart" ${done&&S.dPinOk?'':'disabled'}>Start trip</button>`;
+    } else body=`<div class="card"><h3>Greet the client</h3><p class="muted small" style="margin-top:4px">Confirm the destination, then start the trip.</p></div><div class="sp"></div>${pinBox()}<div class="sp"></div><button type="button" class="btn" id="dstartbtn" data-act="dStart" ${S.dPinOk?'':'disabled'}>Start trip</button>`;
+  }
+  if(st===2) body=`<div class="card row"><div><strong>${PLACES[S.dest].n}</strong><div class="muted small">Stay on the agreed route</div></div><span class="timer" id="eta"></span></div><div class="sp"></div><button type="button" class="btn" data-act="dEnd">End trip</button>`;
+  if(st===3){
+    const done=S.dEndPhotos.every(Boolean);
+    body=`<div class="card"><h3>Return photos</h3><p class="muted small" style="margin:4px 0 12px">Take the same five photos so the owner can compare the car before and after.</p><div class="photos">${SHOTS.map((s,i)=>`<button type="button" class="photo ${S.dEndPhotos[i]?'done':''}" data-act="dEndPhoto" data-arg="${i}" aria-pressed="${!!S.dEndPhotos[i]}">${ic(S.dEndPhotos[i]?'check':'camera',22)}${s}</button>`).join('')}</div></div><div class="sp"></div><button type="button" class="btn" data-act="dFinish" ${done?'':'disabled'}>Finish trip</button>`;
+  }
+  return `<h1>${heads[st]}</h1><div class="steps" aria-hidden="true"><i class="on"></i><i class="${st>=1?'on':''}"></i><i class="${st>=2?'on':''}"></i></div><div class="sp"></div>${mapSVG(mode,still)}<div class="sp"></div>${body}`;
+}
+
+function dSummary(){
+  const q=quote(), inst=S.feePlan?3000:0, earn=Math.round(q.total*(1-FEE))-inst;
+  return `<div style="text-align:center"><div class="avatar" style="margin:0 auto 10px;background:var(--okbg);color:var(--ok)">${ic('check',26)}</div><h1>Trip complete</h1><p class="muted" style="margin-top:4px">${route()}</p></div><div class="sp"></div>
+  <div class="card"><div class="row"><span class="muted">Trip fare</span><span>${fmt(q.total)}</span></div><div class="row"><span class="muted">Driva fee (15%)</span><span>&minus;${fmt(q.total-earn-inst)}</span></div>${inst?`<div class="row"><span class="muted">Vetting fee, trip 1 of 5</span><span>&minus;${fmt(inst)}</span></div>`:''}<div class="divider"></div><div class="row"><strong>You earn</strong><span class="total">${fmt(earn)}</span></div><p class="muted small" style="margin-top:8px">Paid to your bank account at the end of the day.</p></div>
+  <div class="sp"></div><div class="card" style="text-align:center"><strong>Rate Tolu</strong><div class="stars" style="margin-top:8px" role="group" aria-label="Rate the client">${[1,2,3,4,5].map(n=>`<button type="button" class="${S.dRating>=n?'on':''}" data-act="dRate" data-arg="${n}" aria-label="${n} stars">${svg(P.star,30,S.dRating>=n?'style="fill:currentColor"':'')}</button>`).join('')}</div></div>
+  <div class="sp2"></div><button type="button" class="btn" data-act="dDone">Back to home</button>`;
+}
+
+function dEarnings(){
+  const d=[['M',62],['T',48],['W',80],['T',55],['F',100],['S',72],['S',30]];
+  return `<h1>Earnings</h1><div class="sp"></div>
+  <div class="card hero"><div class="muted small">This week</div><div class="total" style="font-size:32px;margin-top:2px">${fmt(142300)}</div><div class="muted small" style="margin-top:4px">17 trips</div></div>
+  <div class="sp2"></div><div class="card" style="padding-bottom:34px"><div class="bars">${d.map((x,i)=>`<div class="${i===4?'hi':''}" style="height:${x[1]}%"><span>${x[0]}</span></div>`).join('')}</div></div>
+  <div class="sp"></div><div class="card row"><span>Next payout</span><strong>Today, 6:00 pm</strong></div>`;
+}
+
+function dProfile(){
+  const items=['Identity (NIN)','Driver licence','Home address, in person visit','2 guarantors, in person visits','Criminal record check'];
+  return `<h1>Your profile</h1><div class="sp"></div>
+  <div class="card row" style="justify-content:flex-start;gap:12px"><div class="avatar">EO</div><div><h3>Emeka Okafor</h3><div class="muted small">312 trips &nbsp;|&nbsp; 4.9 rating</div></div></div>
+  <div class="label">Trust level</div><div class="card row"><span>Solo trips</span><strong style="color:var(--ok)">Unlocked</strong></div><p class="muted small" style="margin-top:6px">New drivers start with ride along trips and unlock solo trips after 20 completed trips with no complaints.</p><div class="label">Verification</div>
+  <div class="card"><div style="margin-bottom:12px"><span class="vet">${ic('shield',14)} Vetted by VeriQuest</span></div>
+  ${items.map(i=>`<div class="check" style="margin-bottom:10px"><span class="ic">${ic('check',14)}</span><div><strong>${i}</strong><div class="muted small">Verified</div></div></div>`).join('')}
+  <p class="muted small">Next re check due January 2027. Clients see verified status only. Your documents are stored encrypted and never shown to clients.</p></div>`;
+}
+
+/* ---------- SIGN UP ---------- */
+const esc=v=>String(v==null?'':v).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+const digits=v=>String(v||'').replace(/\D/g,'');
+const need=names=>names.every(n=>String(S.f[n]||'').trim());
+const fld=(label,name,o)=>{o=o||{};return `<label class="fl"><span>${label}</span><input class="inp" data-f="${name}" type="${o.type||'text'}"${o.mode?` inputmode="${o.mode}"`:''}${o.max?` maxlength="${o.max}"`:''} placeholder="${esc(o.ph||'')}" autocomplete="off" value="${esc(S.f[name])}"></label>`};
+const cbx=(key,text)=>`<button type="button" class="cb" data-act="chk" data-arg="${key}" aria-pressed="${!!S.chk[key]}"><span class="box">${S.chk[key]?ic('check',16):''}</span><span>${text}</span></button>`;
+const tile=(key,label)=>`<button type="button" class="photo ${S.chk[key]?'done':''}" data-act="chk" data-arg="${key}" aria-pressed="${!!S.chk[key]}">${ic(S.chk[key]?'check':'camera',22)}${label}</button>`;
+const chipset=(name,opts)=>`<div class="chips" role="group">${opts.map(o=>`<button type="button" class="chip" data-act="fset" data-arg="${name}|${o}" aria-pressed="${S.f[name]===o}">${o}</button>`).join('')}</div>`;
+const counter=(name,label,min,max)=>`<div class="card row" style="margin-bottom:10px"><div><strong>${label}</strong><div class="muted small">${S.f[name]} selected</div></div><div class="stepper"><button type="button" data-act="cnt" data-arg="${name}|-1|${min}|${max}" aria-label="Fewer ${label}">&minus;</button><button type="button" data-act="cnt" data-arg="${name}|1|${min}|${max}" aria-label="More ${label}">+</button></div></div>`;
+const first=()=>String(S.f.name||'there').trim().split(' ')[0];
+const note=t=>`<p class="muted small" style="margin-top:6px">${t}</p>`;
+
+const phoneStep={t:'Your phone number',s:'We send a 4 digit code to confirm it is you.',b:()=>fld('Phone number','phone',{type:'tel',mode:'tel',ph:'0803 000 0000',max:14}),ok:()=>digits(S.f.phone).length>=10||'Enter a valid phone number'};
+const otpStep={t:'Enter the code',s:()=>'We sent a code to '+esc(S.f.phone)+'. In this prototype any 4 digits work.',b:()=>`<input class="pininput" data-f="otp" inputmode="numeric" maxlength="4" autocomplete="one-time-code" placeholder="0000" aria-label="4 digit code" value="${esc(S.f.otp)}"><div style="text-align:center;margin-top:10px"><button type="button" class="link" data-act="toast" data-arg="A new code is sent in the full app">Send the code again</button></div>`,ok:()=>digits(S.f.otp).length===4||'Enter the 4 digit code'};
+
+function dStatus(){
+  const ap=S.su.approved;
+  const ck=[['Identity (NIN)','done','Verified'],['Driver licence','done','Verified'],['Home address',ap?'done':'active',ap?'Visited and confirmed':'In person visit booked for Thursday'],['Guarantor 1',ap?'done':'pending',ap?'Visited and confirmed':'In person visit after your address check'],['Guarantor 2',ap?'done':'pending',ap?'Visited and confirmed':'In person visit after your address check'],['Criminal record check',ap?'done':'pending',ap?'Cleared':'Starts after the guarantor visits']];
+  const icon=k=>k==='done'?['',ic('check',14)]:k==='active'?['amber',ic('clock',14)]:['grey',''];
+  if(ap) return `<div style="text-align:center;padding-top:10px"><div class="avatar" style="margin:0 auto 12px;width:64px;height:64px;background:var(--okbg);color:var(--ok)">${ic('shield',30)}</div><h1>You are approved, ${esc(first())}</h1><div style="margin-top:10px"><span class="vet">${ic('shield',14)} Vetted by VeriQuest</span></div></div>
+  <div class="sp"></div><div class="card">${ck.map(c=>`<div class="check" style="margin-bottom:10px"><span class="ic">${ic('check',14)}</span><div><strong>${c[0]}</strong><div class="muted small">${c[2]}</div></div></div>`).join('')}</div>
+  <div class="sp"></div>${note('Your vetting was free as a founding driver.')}
+  <div class="sp2"></div><button type="button" class="btn" data-act="suFinish" data-arg="driver">Start driving</button>`;
+  return `<h1>Application received</h1><p class="muted" style="margin:6px 0 16px">VeriQuest is checking your details. This usually takes about a week, because VeriQuest visits you and both guarantors in person. We message you after each step.</p>
+  <div class="card">${ck.map(c=>{const i=icon(c[1]);return `<div class="check" style="margin-bottom:12px"><span class="ic ${i[0]}">${i[1]}</span><div><strong>${c[0]}</strong><div class="muted small">${c[2]}</div></div></div>`}).join('')}</div>
+  <div class="label">Vetting fee</div>
+  <div class="card"><div class="row"><span class="muted">Founding driver offer</span><strong>Free</strong></div></div>
+  <div class="demo"><button type="button" data-act="suApprove">Prototype only: mark as approved</button></div>`;
+}
+
+const gStep=n=>{const p='g'+n;return {
+  t:'Guarantor '+n+' of 2',
+  s:n===1?'Your guarantors vouch for you. VeriQuest visits each one in person.':'Choose someone from a different household than your first guarantor.',
+  b:()=>`<div class="card" style="margin-bottom:14px"><strong>A guarantor must</strong><ul class="crit"><li>Be 25 or older and live in Nigeria</li><li>Have a verifiable job, business or standing in the community</li><li>Have known you for 2 years or more</li><li>Live at a different address from you</li><li>Agree to an in person visit from VeriQuest and sign a guarantee form</li></ul>${note('Not a Driva driver or staff member. Only one of your two guarantors can be a relative.')}</div>`
+   +fld('Full name',p+'Name')+fld('Phone number',p+'Phone',{type:'tel',mode:'tel',max:14})+fld('Relationship to you',p+'Rel',{ph:'Uncle, employer, pastor'})+fld('Job or business',p+'Job',{ph:'Where they work or what they do'})+fld('Home address, for the visit',p+'Addr',{ph:'Street, area, LGA'})
+   +cbx(p+'ok','This person knows I am applying and agrees to a visit from VeriQuest.'),
+  ok:()=>{
+    if(!need([p+'Name',p+'Rel',p+'Job',p+'Addr'])||digits(S.f[p+'Phone']).length<10) return 'Fill in all details for this guarantor';
+    if(!S.chk[p+'ok']) return 'Confirm that your guarantor agrees to a visit';
+    if(n===2){
+      if(digits(S.f.g2Phone)===digits(S.f.g1Phone)) return 'Your two guarantors need different phone numbers';
+      if(String(S.f.g2Addr).trim().toLowerCase()===String(S.f.g1Addr).trim().toLowerCase()) return 'Your guarantors must live at different addresses';
+    }
+    return true;
+  }
+};};
+
+const FLOWS={
+ client:[
+  phoneStep, otpStep,
+  {t:'About you',s:'Tell us who the account belongs to.',b:()=>fld('Full name','name',{ph:'Tolu Adeyemi'})+fld('Email','email',{type:'email',ph:'you@example.com'})+cbx('terms','I agree to the Terms of Use and the Privacy Notice.'),ok:()=>!need(['name','email'])?'Enter your name and email':!String(S.f.email).includes('@')?'Enter a valid email':!S.chk.terms?'Accept the terms to continue':true},
+  {t:'Add your car',s:'Drivers use this to find and recognise your car. You can add more later.',b:()=>fld('Car model and year','model',{ph:'Toyota Camry 2018'})+fld('Plate number','plate',{ph:'LND 482 KJ'})+fld('Colour','colour',{ph:'Black'})+`<div class="two">${tile('carPhoto','Car photo (optional)')}</div>`,ok:()=>need(['model','plate'])||'Enter the car model and plate number'},
+  {t:'Emergency contact',s:'Someone we can call if there is ever a problem on a trip.',b:()=>fld('Contact name','ecName',{ph:'Full name'})+fld('Contact phone','ecPhone',{type:'tel',mode:'tel',ph:'0803 000 0000',max:14})+note('Shared with Driva support only in an emergency.'),ok:()=>(need(['ecName'])&&digits(S.f.ecPhone).length>=10)||'Enter your contact name and phone number',cta:'Create account'},
+  {full:()=>`<div style="text-align:center;padding-top:30px"><div class="avatar" style="margin:0 auto 12px;width:64px;height:64px;background:var(--okbg);color:var(--ok)">${ic('check',30)}</div><h1>Welcome to Driva, ${esc(first())}</h1><p class="muted" style="margin:8px 0 22px">${esc(S.f.model||'Your car')} is saved. You can add more cars from your account.</p><button type="button" class="btn" data-act="suFinish" data-arg="client">Book your first trip</button></div>`}
+ ],
+ org:[
+  {t:'Your company',s:'We confirm your CAC registration before your first booking.',b:()=>fld('Company name','company',{ph:'Adeyemi and Co Logistics'})+fld('CAC registration number','rc',{ph:'RC 1234567'})+fld('Company email','email',{type:'email',ph:'admin@company.com'}),ok:()=>!need(['company','rc','email'])?'Fill in all three fields':!String(S.f.email).includes('@')?'Enter a valid email':true},
+  {t:'Contact person',s:'The person who manages this account.',b:()=>fld('Full name','name')+fld('Job title','title',{ph:'Operations manager'})+fld('Phone number','phone',{type:'tel',mode:'tel',ph:'0803 000 0000',max:14}),ok:()=>(need(['name','title'])&&digits(S.f.phone).length>=10)||'Fill in all fields with a valid phone number'},
+  otpStep,
+  {t:'Cars and staff',s:'A rough count is enough. You can change this later.',b:()=>counter('staff','Staff who will book trips',1,200)+counter('cars','Company cars',1,100),ok:()=>true},
+  {t:'Billing',s:'Choose how your company pays.',b:()=>fld('Billing email','bill',{type:'email',ph:'accounts@company.com'})+`<div class="label" style="margin-top:4px">Billing cycle</div>`+chipset('cycle',['Monthly invoice','Pay per trip'])+note('Monthly invoices list every trip by staff member and car.'),ok:()=>(String(S.f.bill||'').includes('@'))||'Enter a valid billing email',cta:'Submit application'},
+  {full:()=>`<div style="text-align:center;padding-top:20px"><div class="avatar" style="margin:0 auto 12px;width:64px;height:64px;background:var(--okbg);color:var(--ok)">${ic('check',30)}</div><h1>Application received</h1><p class="muted" style="margin:8px 0 18px">${esc(S.f.company||'Your company')} is being set up.</p></div>
+  <div class="card"><div class="check" style="margin-bottom:12px"><span class="ic amber">${ic('clock',14)}</span><div><strong>CAC registration check</strong><div class="muted small">Usually done within 1 working day</div></div></div><div class="check"><span class="ic">${ic('check',14)}</span><div><strong>Contact person confirmed</strong><div class="muted small">${esc(S.f.name)}, ${esc(S.f.title)}</div></div></div></div>
+  <div class="sp2"></div><button type="button" class="btn" data-act="suFinish" data-arg="org">Preview business account</button>`}
+ ],
+ driver:[
+  phoneStep, otpStep,
+  {t:'About you',s:'Use the same details as on your ID.',b:()=>fld('Full name','name',{ph:'Emeka Okafor'})+fld('Home address','addr',{ph:'Street, area, LGA'})+`<div class="label" style="margin-top:4px">Driving experience</div>`+chipset('exp',['1 to 2 years','3 to 5 years','6 plus years']),ok:()=>need(['name','addr','exp'])||'Fill in your name, address and experience'},
+  {t:'Your documents',s:'Used only for vetting. Clients never see them.',b:()=>fld('NIN','nin',{mode:'numeric',max:11,ph:'11 digit number'})+fld('Driver licence number','lic',{ph:'ABC12345'})+`<div class="two">${tile('licPhoto','Licence photo')}${tile('passPhoto','Passport photo')}</div>`,ok:()=>digits(S.f.nin).length!==11?'Your NIN has 11 digits':!need(['lic'])?'Enter your licence number':!(S.chk.licPhoto&&S.chk.passPhoto)?'Add both photos':true},
+  gStep(1),
+  gStep(2),
+  {t:'Where we pay you',s:'Your earnings go to this account at the end of each day.',b:()=>fld('Bank','bank',{ph:'Bank name'})+fld('Account number','acct',{mode:'numeric',max:10,ph:'10 digits'}),ok:()=>(need(['bank'])&&digits(S.f.acct).length===10)||'Enter your bank and a 10 digit account number'},
+  {t:'Vetting and consent',s:'VeriQuest checks every driver before their first trip.',b:()=>`<div class="card"><div class="row"><span class="muted">Vetting fee</span><strong>Free</strong></div><div class="row"><span class="muted">You pay</span><strong>${fmt(0)}</strong></div>${note('Founding driver offer. Driva covers the full cost of your VeriQuest vetting.')}</div><div class="sp"></div>`+cbx('cons1','I consent to VeriQuest checking my identity, driver licence, address, guarantors and criminal record, including in person visits, and using my data and the details of my guarantors for this purpose.')+cbx('cons2','I accept the Driva driver agreement.'),ok:()=>(S.chk.cons1&&S.chk.cons2)||'Tick both boxes to continue',cta:'Accept and continue'},
+  {t:'Take a selfie',s:'We compare it with the photo on your ID.',b:()=>S.chk.selfie===2?`<div class="card" style="text-align:center"><div class="avatar" style="margin:0 auto 10px;background:var(--okbg);color:var(--ok)">${ic('check',26)}</div><strong>Selfie captured</strong></div>`:S.chk.selfie===1?`<div class="card" style="text-align:center"><div class="pulse" style="width:80px;height:80px;margin:8px auto 14px">${ic('camera',34)}</div><strong>Checking your selfie</strong></div>`:`<div class="card" style="text-align:center">${ic('camera',44)}<p class="muted small" style="margin:8px 0 14px">Face the camera in good light. Remove sunglasses and caps.</p><button type="button" class="btn sm" data-act="suSelfie">Take selfie</button></div>`,ok:()=>S.chk.selfie===2||'Take your selfie first',cta:'Submit application'},
+  {full:dStatus}
+ ]
+};
+
+function welcome(){
+  return `<div class="brand">${logo(44)}<span class="word" style="font-size:28px">Driva</span></div>
+  <h1 style="font-size:32px">A trusted driver for your car, whenever you need one.</h1>
+  <p class="muted" style="margin:10px 0 24px">Every driver is checked by VeriQuest before their first trip.</p>
+  <button type="button" class="btn" data-act="suWho" data-arg="client">I need a driver</button><div class="sp"></div>
+  <button type="button" class="btn ghost" data-act="suWho" data-arg="org">Set up a business account</button><div class="sp"></div>
+  <button type="button" class="btn ghost" data-act="suWho" data-arg="driver">I want to drive with Driva</button>
+  <div style="text-align:center;margin-top:16px"><button type="button" class="link" data-act="toast" data-arg="Log in opens in the full app">I already have an account. Log in</button></div>`;
+}
+
+function signup(){
+  const su=S.su;
+  if(!su.who) return welcome();
+  const flow=FLOWS[su.who], st=flow[su.step];
+  if(st.full) return st.full();
+  const prog=`<div class="steps" aria-hidden="true">${flow.slice(0,-1).map((_,i)=>`<i class="${i<=su.step?'on':''}"></i>`).join('')}</div>`;
+  return `<button type="button" class="link" data-act="suBack">${ic('back',18)} Back</button>${prog}
+  <h1 style="margin-top:12px">${st.t}</h1><p class="muted" style="margin:6px 0 18px">${typeof st.s==='function'?st.s():st.s}</p>
+  ${st.b()}
+  <div class="sp2"></div><button type="button" class="btn" data-act="suNext">${st.cta||'Continue'}</button>`;
+}
+
+/* ---------- RENDER ---------- */
+function tabsFor(){
+  if(S.role==='signup') return '';
+  if(S.role==='client'){
+    if(['finding','live','summary','dprofile'].includes(S.screen)&&S.tab==='book') return '';
+    if(S.screen==='quote'&&S.tab==='book') return '';
+    return [['book','Book','home'],['trips','Trips','list'],['biz','Business','building']].map(t=>`<button type="button" data-act="tab" data-arg="${t[0]}" ${S.tab===t[0]?'aria-current="page"':''}>${ic(t[2],22)}${t[1]}</button>`).join('');
+  }
+  if(S.dScreen==='trip'||S.dScreen==='summary') return '';
+  return [['home','Home','home'],['earn','Earnings','chart'],['profile','Profile','user']].map(t=>`<button type="button" data-act="dtab" data-arg="${t[0]}" ${S.dTab===t[0]?'aria-current="page"':''}>${ic(t[2],22)}${t[1]}</button>`).join('');
+}
+
+function render(){
+  cancelAnimationFrame(raf);
+  let h='';
+  if(S.role==='signup'){ h=signup(); }
+  else if(S.role==='client'){
+    if(S.tab==='trips') h=cTrips(); else if(S.tab==='biz') h=cBusiness();
+    else h=({home:cHome,quote:cQuote,finding:cFinding,live:cLive,summary:cSummary,dprofile:cDriverProfile})[S.screen]();
+  } else {
+    if(S.dTab==='earn') h=dEarnings(); else if(S.dTab==='profile') h=dProfile();
+    else h=({home:dHome,trip:dTrip,summary:dSummary})[S.dScreen]();
+  }
+  const key=[S.role,S.tab,S.screen,S.stage,S.dTab,S.dScreen,S.dStage,S.su.who,S.su.step,S.su.approved].join('|');
+  const scr=$('#screen'); const keep=scr.scrollTop;
+  scr.innerHTML=h;
+  scr.scrollTop=(key===lastKey)?keep:0; lastKey=key;
+  const tb=tabsFor(); const tabs=$('#tabs'); tabs.innerHTML=tb; tabs.hidden=!tb;
+  $('#rs').setAttribute('aria-pressed',S.role==='signup'); $('#rc').setAttribute('aria-pressed',S.role==='client'); $('#rd').setAttribute('aria-pressed',S.role==='driver');
+  animateCar();
+}
+
+function startFinding(){
+  S.screen='finding'; render();
+  clearTimeout(findT);
+  findT=setTimeout(()=>{ if(S.screen==='finding'){S.screen='live';S.stage=0;S.photos=[0,0,0,0,0];S.apStart=performance.now();render();} },2400);
+}
+
+const A={
+  role:v=>{clearTimeout(findT);S.role=v;if(v==='signup'&&S.su.who&&FLOWS[S.su.who][S.su.step].full){S.su={who:null,step:0,approved:false}}render()},
+  tab:v=>{S.tab=v;render()},
+  dtab:v=>{S.dTab=v;render()},
+  type:v=>{S.type=v;render()},
+  dest:v=>{S.dest=+v;render()},
+  hours:v=>{S.hours=Math.min(12,Math.max(2,S.hours+ +v));render()},
+  when:v=>{S.when=+v;render()},
+  car:v=>{S.car=+v;render()},
+  errand:v=>{S.errand=+v;render()},
+  quote:()=>{S.screen='quote';render()},
+  back:()=>{S.screen='home';render()},
+  request:()=>startFinding(),
+  cancel:()=>{clearTimeout(findT);S.screen='home';render()},
+  photo:v=>{S.photos[+v]=S.photos[+v]?0:1;render()},
+  confirmHandover:()=>{S.stage=2;S.tripStart=performance.now();render()},
+  next:()=>{
+    if(S.stage===0){S.stage=1}
+    else if(S.stage===1){S.photos=[1,1,1,1,1];S.stage=2;S.tripStart=performance.now()}
+    else {S.screen='summary';S.alert=0}
+    render();
+  },
+  rate:v=>{S.rating=+v;render()},
+  tip:v=>{S.tip=+v;render()},
+  done:()=>{S.screen='home';S.stage=0;S.rating=0;S.tip=0;S.alert=0;render()},
+  toast:v=>toast(v),
+  suWho:v=>{S.su={who:v,step:0,approved:false};S.f={staff:3,cars:2,cycle:'Monthly invoice'};S.chk={};render()},
+  suBack:()=>{if(S.su.step>0)S.su.step--;else S.su.who=null;render()},
+  suNext:()=>{const st=FLOWS[S.su.who][S.su.step];const r=st.ok?st.ok():true;if(r!==true){toast(r);return}S.su.step++;render()},
+  chk:v=>{S.chk[v]=!S.chk[v];render()},
+  fset:v=>{const i=v.indexOf('|');S.f[v.slice(0,i)]=v.slice(i+1);render()},
+  cnt:v=>{const a=v.split('|');S.f[a[0]]=Math.min(+a[3],Math.max(+a[2],S.f[a[0]]+ +a[1]));render()},
+  suSelfie:()=>{S.chk.selfie=1;render();setTimeout(()=>{S.chk.selfie=2;render()},1600)},
+  suApprove:()=>{S.su.approved=true;render()},
+  suFinish:v=>{if(v==='client'){S.role='client';S.tab='book';S.screen='home'}else if(v==='org'){S.role='client';S.tab='biz';S.screen='home'}else{S.role='driver';S.dTab='home';S.dScreen='home';S.dOnline=true;S.selfie=0;S.dDeclined=false}render()},
+  online:()=>{S.dOnline=!S.dOnline;S.dDeclined=false;if(!S.dOnline)S.selfie=0;render()},
+  selfie:()=>{S.selfie=1;render();setTimeout(()=>{S.selfie=2;render()},1800)},
+  viewDriver:()=>{S.screen='dprofile';render()},
+  backLive:()=>{S.screen='live';render()},
+  alert:()=>{S.alert=1;render()},
+  clearAlert:()=>{S.alert=0;render()},
+  dEndPhoto:v=>{S.dEndPhotos[+v]=S.dEndPhotos[+v]?0:1;render()},
+  dFinish:()=>{S.dScreen='summary';render()},
+  dRate:v=>{S.dRating=+v;render()},
+  decline:()=>{S.dDeclined=true;render()},
+  resetReq:()=>{S.dDeclined=false;render()},
+  accept:()=>{S.dScreen='trip';S.dStage=0;S.dPhotos=[0,0,0,0,0];S.dPinVal='';S.dPinOk=false;S.apStart=performance.now();render()},
+  dArrived:()=>{S.dStage=1;render()},
+  dPhoto:v=>{S.dPhotos[+v]=S.dPhotos[+v]?0:1;render()},
+  dStart:()=>{S.dStage=2;S.tripStart=performance.now();render()},
+  dEnd:()=>{if(isSolo()){S.dStage=3;S.dEndPhotos=[0,0,0,0,0]}else{S.dScreen='summary'}render()},
+  dDone:()=>{S.dScreen='home';S.dStage=0;S.dDeclined=false;S.dRating=0;render()}
+};
+
+document.addEventListener('click',e=>{
+  const el=e.target.closest('[data-act]'); if(!el||el.disabled) return;
+  const f=A[el.dataset.act]; if(f) f(el.dataset.arg);
+});
+
+document.addEventListener('input',e=>{
+  if(e.target.id==='dpin'){
+    S.dPinVal=e.target.value.replace(/\D/g,'').slice(0,4);
+    e.target.value=S.dPinVal;
+    S.dPinOk=S.dPinVal===S.pin;
+    const b=$('#dstartbtn');
+    if(b) b.disabled=!(S.dPinOk&&(!isSolo()||S.dPhotos.every(Boolean)));
+  }
+});
+
+document.addEventListener('input',e=>{
+  const f=e.target.dataset&&e.target.dataset.f;
+  if(!f) return;
+  let v=e.target.value;
+  if(f==='otp'){v=v.replace(/\D/g,'').slice(0,4);e.target.value=v}
+  if(f==='nin'||f==='acct'){v=v.replace(/\D/g,'').slice(0,f==='nin'?11:10);e.target.value=v}
+  S.f[f]=v;
+});
+
+render();
+})();
+</script>
+</body>
+</html>

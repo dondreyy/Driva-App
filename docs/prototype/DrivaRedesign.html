@@ -1,0 +1,847 @@
+<title>Driva Redesign</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+/* Concept: a night drive across Lagos. Deep navy for trust, amber used only where the user acts or money moves. Warm paper for forms, a stylized city map for every trip moment. */
+:root{
+  --navy:#0B2545; --amber:#F5A524; --amber-soft:#FFF3D6;
+  --bg:#F7F4EE; --surface:#FFFFFF; --ink:#0B2545; --muted:#5A6A82; --line:#E7E1D4; --soft:#EFEADF;
+  --ok:#16794A; --okbg:#DFF2E6; --warn:#B3261E; --warnbg:#FBE4E1;
+  --outer:#DDE3EC; --chip-on-bg:#0B2545; --chip-on-ink:#FFFFFF; --shadow:rgba(11,37,69,.16);
+  --m-land:#FFFFFF; --m-block:#EEE8DA; --m-water:#BFD8EC; --m-park:#D3E5CC; --m-avenue:#FBE9BE; --m-route:#0B2545; --m-casing:#FFFFFF; --m-label:#5A6A82;
+  --head:'Bricolage Grotesque','Trebuchet MS',system-ui,sans-serif;
+  --body:'DM Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#07152A; --surface:#0F2440; --ink:#EEF3FA; --muted:#9BB0CC; --line:#1F3B65; --soft:#14294A;
+    --ok:#6FD6A0; --okbg:#10382A; --warn:#FF8A80; --warnbg:#3A1C1C; --amber-soft:#2E2A18;
+    --outer:#030B17; --chip-on-bg:#F5A524; --chip-on-ink:#0B2545; --shadow:rgba(0,0,0,.5);
+    --m-land:#0B1D38; --m-block:#10294D; --m-water:#0A3558; --m-park:#0F3B35; --m-avenue:#2B3B52; --m-route:#F5A524; --m-casing:#07152A; --m-label:#9BB0CC;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#07152A; --surface:#0F2440; --ink:#EEF3FA; --muted:#9BB0CC; --line:#1F3B65; --soft:#14294A;
+  --ok:#6FD6A0; --okbg:#10382A; --warn:#FF8A80; --warnbg:#3A1C1C; --amber-soft:#2E2A18;
+  --outer:#030B17; --chip-on-bg:#F5A524; --chip-on-ink:#0B2545; --shadow:rgba(0,0,0,.5);
+  --m-land:#0B1D38; --m-block:#10294D; --m-water:#0A3558; --m-park:#0F3B35; --m-avenue:#2B3B52; --m-route:#F5A524; --m-casing:#07152A; --m-label:#9BB0CC;
+  color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--outer);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.45;-webkit-font-smoothing:antialiased;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:12px}
+button{font:inherit;color:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}
+:focus-visible{outline:3px solid var(--amber);outline-offset:2px}
+h1,h2,h3,p{margin:0}
+h1,h2,h3,.head{font-family:var(--head);letter-spacing:-.01em;text-wrap:balance}
+.muted{color:var(--muted)}
+.small{font-size:13px}
+.num{font-variant-numeric:tabular-nums}
+.stage{height:100%;display:flex;align-items:center;justify-content:center}
+.phone{width:100%;max-width:420px;height:100%;max-height:860px;display:flex;flex-direction:column;background:var(--bg);overflow:hidden;position:relative;border-radius:30px;box-shadow:0 24px 60px var(--shadow);border:6px solid var(--navy)}
+.switch{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 12px;background:var(--navy);color:#fff;font-size:12px;flex:none}
+.pseg{display:flex;background:rgba(255,255,255,.14);border-radius:999px;padding:2px}
+.pseg button{border:0;background:transparent;color:#fff;padding:5px 14px;border-radius:999px;font-size:12px;font-weight:700}
+.pseg button[aria-pressed="true"]{background:var(--amber);color:var(--navy)}
+.view{flex:1;position:relative;overflow:hidden;min-height:0}
+.screen{position:absolute;inset:0;display:flex;flex-direction:column;background:var(--bg)}
+.toast{position:absolute;left:16px;right:16px;bottom:18px;background:var(--navy);color:#fff;border-radius:14px;padding:12px 14px;font-size:14px;z-index:20;box-shadow:0 8px 24px var(--shadow)}
+.toast[hidden]{display:none}
+
+/* motion: only when the screen or stage changed */
+@keyframes scrIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@keyframes sheetUp{from{transform:translateY(40%);opacity:0}to{transform:none;opacity:1}}
+@keyframes stageIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes draw{from{stroke-dashoffset:1}to{stroke-dashoffset:0}}
+@keyframes ripple{0%{transform:scale(.2);opacity:.7}100%{transform:scale(2.4);opacity:0}}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(245,165,36,.5)}100%{box-shadow:0 0 0 22px rgba(245,165,36,0)}}
+@keyframes pop{0%{transform:scale(.4);opacity:0}70%{transform:scale(1.12)}100%{transform:scale(1);opacity:1}}
+@keyframes tick{from{stroke-dashoffset:30}to{stroke-dashoffset:0}}
+@keyframes drive{from{transform:translateX(-80px)}to{transform:translateX(470px)}}
+@keyframes lane{to{stroke-dashoffset:-24}}
+@keyframes twinkle{0%,100%{opacity:.25}50%{opacity:.95}}
+@keyframes count{from{stroke-dashoffset:0}to{stroke-dashoffset:1}}
+@keyframes shake{20%,60%{transform:translateX(-6px)}40%,80%{transform:translateX(6px)}}
+@keyframes shimmer{from{background-position:-200px 0}to{background-position:200px 0}}
+[data-animate="screen"] .screen{animation:scrIn .35s cubic-bezier(.2,.8,.2,1) both}
+[data-animate="screen"] .sheet{animation:sheetUp .5s cubic-bezier(.2,.8,.2,1) both}
+[data-animate="stage"] .stagebody,[data-animate="screen"] .stagebody{animation:stageIn .4s cubic-bezier(.2,.8,.2,1) both}
+.route{stroke-dasharray:1;stroke-dashoffset:0}
+[data-animate="screen"] .route{animation:draw 1.3s ease-out both}
+.pop{animation:pop .5s cubic-bezier(.3,1.4,.5,1) both}
+.tickpath{stroke-dasharray:30;animation:tick .5s .2s ease-out both}
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important}
+}
+
+/* buttons and inputs */
+.btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;border:0;border-radius:18px;padding:16px 18px;font-family:var(--head);font-weight:800;font-size:16px;transition:transform .12s}
+.btn:active{transform:scale(.98)}
+.btn.primary{background:var(--amber);color:var(--navy)}
+.btn.dark{background:var(--navy);color:#fff}
+.btn.ghost{background:transparent;border:1.5px solid var(--line);color:var(--ink)}
+.btn.split{justify-content:space-between}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn.sm{width:auto;padding:10px 14px;font-size:14px;border-radius:14px}
+.icon-btn{width:44px;height:44px;border-radius:50%;border:1.5px solid var(--line);background:var(--surface);display:grid;place-items:center;flex:none}
+.link{border:0;background:none;color:var(--muted);font-weight:700;padding:6px 0}
+.chip{border:1.5px solid var(--line);background:var(--surface);border-radius:999px;padding:10px 15px;font-weight:500;white-space:nowrap}
+.chip[aria-pressed="true"]{background:var(--chip-on-bg);color:var(--chip-on-ink);border-color:var(--chip-on-bg);font-weight:700}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.label{font-family:var(--head);font-weight:800;font-size:15px;margin:20px 0 10px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:16px}
+.row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.row+.row{margin-top:10px}
+.divider{height:1px;background:var(--line);margin:14px 0}
+.vet{display:inline-flex;align-items:center;gap:5px;background:var(--okbg);color:var(--ok);border-radius:999px;padding:3px 10px 3px 7px;font-size:12px;font-weight:700}
+.tag{display:inline-block;background:var(--soft);border-radius:8px;padding:3px 9px;font-size:12px;font-weight:700}
+.starfill{color:var(--amber);fill:currentColor;vertical-align:-2px}
+
+/* sheet over map */
+.mapbox{position:absolute;left:0;right:0;top:0;height:54%;overflow:hidden;background:var(--m-land)}
+.mapbox svg{width:100%;height:100%;display:block}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--surface);border-radius:28px 28px 0 0;box-shadow:0 -12px 40px var(--shadow);padding:10px 20px 20px;max-height:68%;overflow-y:auto;overscroll-behavior:contain}
+.sheet.tall{top:26%;max-height:none}
+.sheet::before{content:"";display:block;width:40px;height:4px;border-radius:4px;background:var(--line);margin:0 auto 14px}
+.fab{position:absolute;top:14px;left:14px;z-index:5;width:44px;height:44px;border-radius:50%;border:0;background:var(--surface);box-shadow:0 4px 14px var(--shadow);display:grid;place-items:center}
+.demo{position:absolute;top:14px;right:14px;z-index:5;display:flex;flex-direction:column;gap:6px;align-items:flex-end}
+.demo button{border:0;background:rgba(11,37,69,.88);color:#fff;border-radius:999px;padding:7px 12px;font-size:12px;font-weight:700}
+.alertbar{position:absolute;left:14px;right:14px;top:70px;z-index:5;background:var(--warnbg);color:var(--warn);border:1.5px solid var(--warn);border-radius:16px;padding:12px 14px;font-size:14px}
+.alertbar b{display:block;font-family:var(--head)}
+
+/* map classes */
+.m-land{fill:var(--m-land)}.m-blocks{fill:var(--m-block)}.m-water{fill:var(--m-water)}.m-park{fill:var(--m-park)}
+.m-ave{stroke:var(--m-avenue);fill:none;stroke-linecap:round}
+.m-case{stroke:var(--m-casing);fill:none;stroke-linecap:round;stroke-linejoin:round}
+.m-route{stroke:var(--m-route);fill:none;stroke-linecap:round;stroke-linejoin:round}
+.m-approach{fill:none;stroke:var(--m-route);stroke-opacity:.35;stroke-width:4;stroke-dasharray:2 7;stroke-linecap:round}
+.m-lbl{font:700 11px var(--body);fill:var(--m-label)}
+.m-pickup{fill:var(--navy);stroke:#fff;stroke-width:3}
+.m-dest{fill:var(--amber);stroke:var(--navy);stroke-width:2.5}
+.m-car-body{fill:var(--amber);stroke:var(--navy);stroke-width:2}
+.m-car-win{fill:var(--navy)}
+.ring-r{fill:none;stroke:var(--amber);stroke-width:2;transform-box:fill-box;transform-origin:center;animation:ripple 2.4s ease-out infinite}
+.ring-r:nth-child(2){animation-delay:.8s}.ring-r:nth-child(3){animation-delay:1.6s}
+
+/* welcome */
+.hero{position:relative;flex:1;min-height:0;background:linear-gradient(180deg,#0B2545 0%,#12386B 100%);color:#fff;overflow:hidden}
+.hero-svg{position:absolute;left:0;right:0;bottom:0;width:100%;height:50%}
+.hero-copy{position:relative;padding:22px 22px 0}
+.hero h1{font-size:clamp(30px,9vw,40px);line-height:1.04;font-weight:800;margin-top:26px}
+.hero p{margin-top:12px;color:#C5D2E6;max-width:30ch}
+.win{animation:twinkle 4s ease-in-out infinite}
+.drive{animation:drive 9s linear infinite}
+.lane{animation:lane 1s linear infinite}
+.brand{display:flex;align-items:center;gap:10px}
+.brand .word{font-family:var(--head);font-weight:800;font-size:24px;letter-spacing:-.02em}
+.wcard{position:relative;margin-top:-26px;background:var(--bg);border-radius:28px 28px 0 0;padding:20px 20px 22px;flex:none}
+.trust{display:flex;gap:6px;margin-bottom:16px}
+.trust span{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;font-size:12px;font-weight:700;padding:10px 4px;background:var(--surface);border:1px solid var(--line);border-radius:16px}
+.trust svg{color:var(--ok)}
+
+/* booking */
+.types{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tcard{display:flex;flex-direction:column;align-items:flex-start;gap:4px;text-align:left;border:1.5px solid var(--line);background:var(--surface);border-radius:20px;padding:14px}
+.tcard b{font-family:var(--head);font-size:16px}
+.tcard small{color:var(--muted);line-height:1.3}
+.tcard .tc-ic{width:36px;height:36px;border-radius:12px;background:var(--soft);display:grid;place-items:center;margin-bottom:4px}
+.tcard[aria-pressed="true"]{border-color:var(--amber);background:var(--amber-soft);box-shadow:0 0 0 3px rgba(245,165,36,.25)}
+.tcard[aria-pressed="true"] .tc-ic{background:var(--amber);color:var(--navy)}
+.opts{display:flex;flex-direction:column;gap:6px}
+.opt{display:flex;align-items:center;gap:12px;border:1.5px solid transparent;background:var(--bg);border-radius:16px;padding:11px 12px;text-align:left;width:100%}
+.opt .ro-ic{width:36px;height:36px;border-radius:50%;background:var(--soft);display:grid;place-items:center;flex:none}
+.opt .ro-t{flex:1;min-width:0;display:flex;flex-direction:column}
+.opt .ro-t b{font-weight:700}
+.opt .ro-t small{color:var(--muted)}
+.opt .ro-r{color:var(--muted);font-size:13px}
+.opt .radio{width:22px;height:22px;border-radius:50%;border:2px solid var(--line);flex:none;display:grid;place-items:center}
+.opt[aria-pressed="true"]{border-color:var(--navy);background:var(--surface)}
+.opt[aria-pressed="true"] .radio{border-color:var(--amber);background:var(--amber);box-shadow:inset 0 0 0 4px var(--amber-soft)}
+.stepper{display:flex;align-items:center;gap:14px}
+.stepper button{width:40px;height:40px;border-radius:12px;border:1.5px solid var(--line);background:var(--surface);font-size:20px;font-weight:700;line-height:1}
+.ctabar{position:sticky;bottom:-20px;margin:18px -20px -20px;padding:14px 20px 20px;background:linear-gradient(180deg,rgba(255,255,255,0),var(--surface) 30%)}
+:root[data-theme="dark"] .ctabar{background:linear-gradient(180deg,rgba(15,36,64,0),var(--surface) 30%)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .ctabar{background:linear-gradient(180deg,rgba(15,36,64,0),var(--surface) 30%)}}
+
+/* quote */
+.fare{font-family:var(--head);font-weight:800;font-size:44px;line-height:1;letter-spacing:-.03em}
+.lockrow{display:flex;align-items:center;gap:6px;color:var(--ok);font-weight:700;font-size:13px}
+.check-row{display:flex;gap:10px;align-items:flex-start;font-size:14px}
+.check-row .ic{flex:none;width:24px;height:24px;border-radius:50%;background:var(--okbg);color:var(--ok);display:grid;place-items:center}
+.check-row+.check-row{margin-top:10px}
+
+/* finding */
+.fsteps{list-style:none;margin:16px 0 4px;padding:0;display:flex;flex-direction:column;gap:14px}
+.fsteps li{display:flex;align-items:center;gap:12px;color:var(--muted);font-weight:500}
+.fsteps .dot{width:26px;height:26px;border-radius:50%;border:2px solid var(--line);display:grid;place-items:center;flex:none}
+.fsteps li.now{color:var(--ink);font-weight:700}
+.fsteps li.now .dot{border-color:var(--amber);animation:pulse 1.2s ease-out infinite}
+.fsteps li.done{color:var(--ink)}
+.fsteps li.done .dot{background:var(--ok);border-color:var(--ok);color:#fff}
+.skel{height:78px;border-radius:20px;background:linear-gradient(90deg,var(--soft) 25%,var(--bg) 50%,var(--soft) 75%);background-size:400px 100%;animation:shimmer 1.2s linear infinite}
+
+/* trip */
+.drv{display:flex;align-items:center;gap:12px}
+.drv-t{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+.drv-t b{font-family:var(--head);font-size:17px}
+.drv-t .vet{align-self:flex-start}
+.drv-a{display:flex;gap:8px}
+.av{flex:none;width:56px;height:56px;border-radius:50%;box-shadow:0 0 0 3px var(--surface),0 0 0 5px var(--amber)}
+.eta-row{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:14px}
+.eta-big{font-family:var(--head);font-weight:800;font-size:38px;line-height:1;letter-spacing:-.02em}
+.tl{list-style:none;display:flex;margin:0 0 16px;padding:0}
+.tl li{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;font-size:11.5px;color:var(--muted);position:relative;font-weight:500}
+.tl li i{width:12px;height:12px;border-radius:50%;background:var(--line);position:relative;z-index:1}
+.tl li:not(:last-child)::after{content:"";position:absolute;top:5px;left:calc(50% + 8px);right:calc(-50% + 8px);height:2px;background:var(--line)}
+.tl li.done i,.tl li.now i{background:var(--amber)}
+.tl li.done:not(:last-child)::after{background:var(--amber)}
+.tl li.now{color:var(--ink);font-weight:700}
+.tl li.now i{box-shadow:0 0 0 5px rgba(245,165,36,.3)}
+.pinbox{background:var(--navy);color:#fff;border-radius:22px;padding:16px;margin:0 0 14px;text-align:center}
+.pinbox .digs{display:flex;gap:10px;justify-content:center;margin:10px 0 8px}
+.pindig{width:52px;height:64px;border-radius:14px;background:rgba(255,255,255,.1);border:1.5px solid rgba(255,255,255,.25);display:grid;place-items:center;font-family:var(--head);font-weight:800;font-size:32px}
+.pinbox small{color:#C5D2E6}
+.photos{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.photo{border:1.5px dashed var(--line);background:var(--bg);border-radius:16px;padding:14px 4px;display:flex;flex-direction:column;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--muted)}
+.photo[aria-pressed="true"]{border:1.5px solid var(--ok);background:var(--okbg);color:var(--ok)}
+.safety{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+
+/* receipt and success */
+.success{width:84px;height:84px;border-radius:50%;background:var(--okbg);color:var(--ok);display:grid;place-items:center;margin:0 auto 12px}
+.stars{display:flex;gap:6px;justify-content:center}
+.stars button{border:0;background:none;padding:2px;color:var(--line)}
+.stars button.on{color:var(--amber)}
+.scroll{position:absolute;inset:0;overflow-y:auto;padding:22px 20px 24px}
+
+/* driver */
+.dtop{background:var(--navy);color:#fff;padding:18px 20px 40px;flex:none}
+.dbody{position:relative;margin-top:-22px;background:var(--bg);border-radius:26px 26px 0 0;padding:20px;flex:1;min-height:0;overflow-y:auto}
+.toggle{display:flex;align-items:center;gap:10px;border:0;background:rgba(255,255,255,.12);color:#fff;border-radius:999px;padding:6px 8px 6px 14px;font-weight:700;font-size:13px}
+.toggle i{width:44px;height:26px;border-radius:999px;background:rgba(255,255,255,.3);position:relative;transition:background .2s}
+.toggle i::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:transform .2s}
+.toggle[aria-pressed="true"] i{background:var(--ok)}
+.toggle[aria-pressed="true"] i::after{transform:translateX(18px)}
+.earn{font-family:var(--head);font-weight:800;font-size:44px;letter-spacing:-.03em;line-height:1;margin-top:18px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:16px}
+.stats div{background:rgba(255,255,255,.1);border-radius:14px;padding:10px 12px}
+.stats b{display:block;font-family:var(--head);font-size:18px}
+.stats span{font-size:12px;color:#C5D2E6}
+.req{border:2px solid var(--amber);background:var(--surface);border-radius:24px;padding:16px}
+.cd{position:relative;width:46px;height:46px;flex:none;display:grid;place-items:center;font-family:var(--head);font-weight:800}
+.cd svg{position:absolute;inset:0}
+.ringfg{stroke-dasharray:1;animation:count 30s linear forwards}
+.miniroute{background:var(--bg);border-radius:14px;overflow:hidden;margin:12px 0}
+.empty{text-align:center;padding:30px 10px}
+.empty .moon{width:88px;height:88px;border-radius:50%;background:var(--soft);display:grid;place-items:center;margin:0 auto 14px;color:var(--muted)}
+.pad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
+.pad button{border:1.5px solid var(--line);background:var(--surface);border-radius:16px;padding:13px;font-family:var(--head);font-weight:800;font-size:22px}
+.pad button:active{background:var(--soft)}
+.pinrow{display:flex;gap:10px;justify-content:center}
+.pinrow .pindig{background:var(--bg);border-color:var(--line);color:var(--ink)}
+.pinrow.bad{animation:shake .4s}
+.pinrow.ok .pindig{background:var(--okbg);border-color:var(--ok);color:var(--ok)}
+/* forms and accounts */
+.fhead{display:flex;align-items:center;gap:12px;padding:14px 16px 6px;flex:none;min-height:64px}
+.prog{flex:1;height:6px;border-radius:6px;background:var(--line);overflow:hidden}
+.prog i{display:block;height:100%;background:var(--amber);border-radius:6px;transition:width .3s}
+.fbody{flex:1;min-height:0;overflow-y:auto;padding:10px 20px 20px;overscroll-behavior:contain}
+.ffoot{flex:none;padding:12px 20px 18px;background:var(--bg);border-top:1px solid var(--line)}
+.field{margin-bottom:14px}
+.field label{display:block;font-weight:700;font-size:13px;margin-bottom:6px}
+.field input{width:100%;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);border-radius:14px;padding:13px 14px;font:inherit;font-size:16px}
+.field input:focus{outline:3px solid var(--amber);outline-offset:1px;border-color:var(--navy)}
+.acct{display:flex;align-items:center;gap:14px;text-align:left;width:100%;border:1.5px solid var(--line);background:var(--surface);border-radius:20px;padding:16px;margin-bottom:10px;color:var(--ink)}
+.acct .tc-ic{width:44px;height:44px;border-radius:14px;background:var(--soft);display:grid;place-items:center;flex:none}
+.gcard{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:16px;margin-bottom:12px}
+
+</style>
+
+<div class="stage">
+  <div class="phone" id="phone">
+    <div class="switch">
+      <span>Redesign preview</span>
+      <div class="pseg" role="group" aria-label="Preview as">
+        <button type="button" id="rc" data-act="role" data-arg="client" aria-pressed="true">Client</button>
+        <button type="button" id="rd" data-act="role" data-arg="driver" aria-pressed="false">Driver</button>
+      </div>
+    </div>
+    <main class="view" id="view" data-animate="screen"></main>
+    <div class="toast" id="toast" role="status" hidden></div>
+  </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+var $=function(s,r){return (r||document).querySelector(s)};
+var reduce=window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+var fmt=function(n){return "₦"+Math.round(n).toLocaleString("en-NG")};
+var svg=function(p,s,x){return '<svg viewBox="0 0 24 24" width="'+(s||20)+'" height="'+(s||20)+'" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" '+(x||"")+'>'+p+'</svg>'};
+var P={
+  back:'<path d="M15 5l-7 7 7 7"/>',
+  pin:'<path d="M12 21s-6-5.2-6-10a6 6 0 1 1 12 0c0 4.8-6 10-6 10z"/><circle cx="12" cy="11" r="2.2"/>',
+  clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  car:'<path d="M4 16v-4l2-5h12l2 5v4"/><path d="M3 16h18v3H3z"/><path d="M6 12h12"/>',
+  shield:'<path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/>',
+  check:'<path class="tickpath" d="M5 12l4.5 4.5L19 7"/>',
+  star:'<path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/>',
+  phone:'<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/>',
+  chat:'<path d="M4 5h16v11H9l-5 4z"/>',
+  share:'<circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8.2 10.8l7.6-3.6M8.2 13.2l7.6 3.6"/>',
+  alert:'<path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17h.01"/>',
+  camera:'<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>',
+  user:'<circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/>',
+  nav:'<path d="M12 3l7 17-7-4-7 4z"/>',
+  lock:'<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
+  moon:'<path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/>',
+  arrow:'<path d="M5 12h14M13 6l6 6-6 6"/>',
+  key:'<circle cx="8" cy="12" r="4"/><path d="M12 12h9M18 12v4M21 12v3"/>',
+  eye:'<path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+  backspace:'<path d="M9 5h10a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H9l-6-7z"/><path d="M12 10l4 4M16 10l-4 4"/>',
+  building:'<path d="M5 21V4h9v17M14 9h5v12M3 21h18M8 8h2M8 12h2M8 16h2"/>',
+  doc:'<path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4M10 12h5M10 16h5"/>',
+  plus:'<path d="M12 5v14M5 12h14"/>'
+};
+var ic=function(n,s,x){return svg(P[n],s,x)};
+var logo=function(s){s=s||36;return '<svg width="'+s+'" height="'+s+'" viewBox="0 0 48 48" aria-hidden="true"><rect width="48" height="48" rx="12" fill="#F5A524"/><g fill="none" stroke="#0B2545" stroke-width="3" stroke-linecap="round"><circle cx="17" cy="24" r="9.5"/><path d="M8 24h6M20 24h6M17 29v5.5" stroke-width="2.6"/><path d="M26.5 24H41M35 24v6M40.5 24v5"/></g><circle cx="17" cy="24" r="2.4" fill="#0B2545"/></svg>'};
+var avatar=function(sz){return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="32" fill="#F5A524"/><circle cx="32" cy="26" r="10.5" fill="#0B2545"/><path d="M11 60c2-12 10-19 21-19s19 7 21 19z" fill="#0B2545"/><circle cx="32" cy="26" r="10.5" fill="none" stroke="#FFC857" stroke-width="1" opacity=".6"/></svg>'};
+
+var PLACES=[
+  {n:"Victoria Island",a:"Business district",km:9},
+  {n:"Ikoyi",a:"Offices and residences",km:11},
+  {n:"Ajah",a:"Lekki corridor",km:14},
+  {n:"Ikeja",a:"Mainland, GRA",km:21},
+  {n:"Airport",a:"Murtala Muhammed terminal",km:31}
+];
+var CARS=[{n:"Toyota Camry 2018",p:"LND 482 KJ"},{n:"Lexus RX 350",p:"ABC 120 EK"}];
+var WHEN=[{l:"Now",night:0},{l:"Tonight 10:00 pm",night:1},{l:"Tomorrow 7:00 am",night:0}];
+var TASKS=["Pick someone up","Run an errand","Take car for service","Deliver car"];
+var SHOTS=["Front","Back","Left","Right","Fuel and dash"];
+var PIN="4827", FEE=0.15;
+
+var S={su:{kind:"",step:0},acct:"personal",biz:null,extra:[],who:0,trips:[{d:"21 Oct",w:0,r:"Lekki Phase 1 to Victoria Island",t:"Drive my car alone",a:5200},{d:"20 Oct",w:1,r:"Lekki Phase 1 to Ikeja",t:"Ride with me",a:10500},{d:"18 Oct",w:0,r:"Lekki Phase 1 to Airport",t:"Drive my car alone",a:11800},{d:"15 Oct",w:1,r:"Lekki Phase 1 to Ikoyi",t:"Drive my car alone",a:5800}],role:"client",screen:"welcome",type:"ride",dest:0,hours:2,when:0,car:0,task:0,stage:0,photos:[0,0,0,0,0],alert:0,rating:0,tip:0,tag:{},find:0,apStart:0,tripStart:0,
+  d:{online:true,req:"new",screen:"home",stage:0,pin:"",pinOk:false,bad:0,photos:[0,0,0,0,0],rating:0,rs:0,vet:1}};
+
+function quote(){
+  var base=S.type==="ride"?S.hours*3500:2500+Math.round(PLACES[S.dest].km*300/100)*100;
+  var night=WHEN[S.when].night?1500:0;
+  return {base:base,night:night,total:base+night};
+}
+var solo=function(){return S.type==="solo"};
+var typeLabel=function(){return solo()?"Drive my car alone":"Ride with me"};
+
+var toastT=0;
+function toast(m){var t=$("#toast");t.textContent=m;t.hidden=false;clearTimeout(toastT);toastT=setTimeout(function(){t.hidden=true},2600)}
+
+/* ---------- map ---------- */
+function blocks(){
+  var s="";
+  for(var gx=0;gx<9;gx++)for(var gy=0;gy<13;gy++){
+    var x=gx*46+6,y=gy*46+6,w=36+((gx*7+gy*3)%3)*3,h=36+((gx*5+gy*11)%3)*3;
+    s+='<rect x="'+x+'" y="'+y+'" width="'+w+'" height="'+h+'" rx="5"/>';
+  }
+  return s;
+}
+var BLOCKS=blocks();
+var ROUTE="M80 380C118 330 150 336 192 292S270 236 310 186";
+var APPROACH="M26 212C40 270 84 310 80 380";
+function map(o){
+  var d=PLACES[S.dest];
+  var h='<svg viewBox="0 0 390 560" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Trip map">';
+  h+='<rect class="m-land" width="390" height="560"/><g class="m-blocks">'+BLOCKS+'</g>';
+  h+='<path class="m-water" d="M390 300C350 330 320 400 270 470S230 540 200 560L390 560Z"/>';
+  h+='<rect class="m-park" x="16" y="410" width="92" height="72" rx="16"/><rect class="m-park" x="250" y="62" width="76" height="52" rx="14"/>';
+  h+='<path class="m-ave" stroke-width="12" d="M-10 440L400 170"/><path class="m-ave" stroke-width="10" d="M150 -10L214 570"/>';
+  h+='<text class="m-lbl" x="236" y="470">Lagoon</text>';
+  if(o.nearby){
+    [[150,300,20],[236,352,-30],[44,296,60]].forEach(function(c){h+='<g transform="translate('+c[0]+' '+c[1]+') rotate('+c[2]+')"><rect x="-6" y="-10" width="12" height="20" rx="4" fill="var(--amber)" stroke="var(--navy)" stroke-width="1.5"/></g>'});
+  }
+  if(o.route){
+    h+='<path class="m-case" stroke-width="11" d="'+ROUTE+'"/><path id="route" class="m-route route" stroke-width="5" pathLength="1" d="'+ROUTE+'"/>';
+    h+='<g transform="translate(310 186)"><path class="m-dest" d="M0 12C-11 -2 -11 -17 0 -17S11 -2 0 12Z"/><circle cy="-6" r="3.4" fill="#0B2545"/></g>';
+    h+='<text class="m-lbl" x="268" y="170">'+d.n+'</text>';
+  }
+  if(o.car){
+    h+='<path id="approach" class="m-approach" d="'+APPROACH+'"/>';
+  }
+  if(o.radar){
+    h+='<g transform="translate(80 380)"><circle class="ring-r" r="70"/><circle class="ring-r" r="70"/><circle class="ring-r" r="70"/></g>';
+  }
+  h+='<circle class="m-pickup" cx="80" cy="380" r="9"/><circle cx="80" cy="380" r="3.5" fill="#F5A524"/>';
+  h+='<text class="m-lbl" x="94" y="404">Lekki Phase 1</text>';
+  if(o.car){
+    h+='<g id="car" data-mode="'+o.car+'"><circle r="17" fill="#000" opacity=".12"/><rect class="m-car-body" x="-8" y="-13" width="16" height="26" rx="6"/><rect class="m-car-win" x="-5.5" y="-6" width="11" height="8" rx="2.5" opacity=".85"/></g>';
+  }
+  return h+'</svg>';
+}
+var raf=0;
+function placeCar(path,p,car){
+  var L=path.getTotalLength();
+  var a=path.getPointAtLength(Math.max(0,Math.min(L,p*L)));
+  var b=path.getPointAtLength(Math.min(L,p*L+3));
+  var ang=Math.atan2(b.y-a.y,b.x-a.x)*180/Math.PI+90;
+  car.setAttribute("transform","translate("+a.x+" "+a.y+") rotate("+ang+")");
+}
+function animateCar(){
+  var car=$("#car"); if(!car) return;
+  var mode=car.dataset.mode;
+  var path=$(mode==="approach"?"#approach":"#route"); if(!path) return;
+  var start=mode==="approach"?S.apStart:S.tripStart, dur=mode==="approach"?11000:26000, total=mode==="approach"?6:16;
+  var still=(S.role==="client"?S.stage:S.d.stage)===1;
+  (function step(){
+    var p=still?1:Math.min(1,(performance.now()-start)/dur);
+    if(reduce&&!still) p=0.6;
+    placeCar(path,p,car);
+    var eta=$("#eta");
+    if(eta) eta.textContent=Math.max(1,Math.ceil((1-p)*total))+" min";
+    if(p<1&&!reduce&&!still) raf=requestAnimationFrame(step);
+  })();
+}
+
+/* ---------- client screens ---------- */
+function skyline(){
+  var s="";
+  for(var i=0;i<14;i++){
+    var x=i*30-8,w=26+((i*7)%10),h=60+((i*53)%110);
+    s+='<rect x="'+x+'" y="'+(300-h)+'" width="'+w+'" height="'+h+'" fill="#FFFFFF" fill-opacity="'+(0.05+(i%3)*0.02)+'"/>';
+    for(var r=0;r<Math.floor(h/16);r++)for(var c=0;c<2;c++){
+      if(((i*3+r*5+c*7)%4)===0) s+='<rect class="win" style="animation-delay:'+((i+r+c)%5)+'s" x="'+(x+6+c*(w/2-2))+'" y="'+(300-h+8+r*16)+'" width="4" height="6" rx="1" fill="#F5A524" fill-opacity=".85"/>';
+    }
+  }
+  return s;
+}
+function welcome(){
+  return '<div class="screen">'+
+  '<div class="hero"><div class="hero-copy stagebody"><div class="brand">'+logo(40)+'<span class="word">Driva</span></div>'+
+  '<h1>Your car. A driver you can trust.</h1><p>Every driver is physically verified by VeriQuest, a background check and verification company, before their first ride.</p></div>'+
+  '<svg class="hero-svg" viewBox="0 0 390 300" preserveAspectRatio="xMidYMax slice" aria-hidden="true">'+skyline()+
+  '<rect y="262" width="390" height="38" fill="#07152A"/><line class="lane" x1="0" x2="390" y1="281" y2="281" stroke="#F5A524" stroke-opacity=".7" stroke-width="2" stroke-dasharray="14 10"/>'+
+  '<g class="drive"><polygon points="62,243 150,228 150,262 62,250" fill="#FFC857" fill-opacity=".22"/><g transform="translate(0 232)"><path d="M2 20c0-4 2-6 6-7l8-6c2-1.5 4-2 7-2h14c4 0 7 1.5 10 5l3 4c4 .5 6 2 6 6v3H2z" fill="#F5A524"/><path d="M17 12l5-4h12c2 0 4 1 5.5 3l1.5 1z" fill="#0B2545" opacity=".8"/><circle cx="16" cy="24" r="5" fill="#07152A"/><circle cx="48" cy="24" r="5" fill="#07152A"/><circle cx="16" cy="24" r="1.8" fill="#FFC857"/><circle cx="48" cy="24" r="1.8" fill="#FFC857"/></g></g></svg></div>'+
+  '<div class="wcard stagebody"><div class="trust"><span>'+ic("eye",22)+'Physically verified</span><span>'+ic("key",22)+'Trip PIN</span><span>'+ic("camera",22)+'Photo records</span></div>'+
+  '<button type="button" class="btn primary" data-act="go" data-arg="book">Book a driver '+ic("arrow",20)+'</button>'+
+  '<div style="height:10px"></div><div style="display:flex;gap:10px">'+(S.biz?'<button type="button" class="btn ghost" style="padding:14px 10px;font-size:15px" data-act="go" data-arg="biz">Business</button>':'<button type="button" class="btn ghost" style="padding:14px 10px;font-size:15px" data-act="openSignup">Sign up</button>')+'<button type="button" class="btn ghost" style="padding:14px 10px;font-size:15px" data-act="regDriver">Drive with Driva</button></div></div></div>';
+}
+function bookScreen(){
+  var q=quote();
+  var types='<div class="types" role="group" aria-label="Trip type">'+
+   '<button type="button" class="tcard" data-act="type" data-arg="ride" aria-pressed="'+!solo()+'"><span class="tc-ic">'+ic("user",20)+'</span><b>Ride with me</b><small>You sit in the car. Priced by the hour.</small></button>'+
+   '<button type="button" class="tcard" data-act="type" data-arg="solo" aria-pressed="'+solo()+'"><span class="tc-ic">'+ic("car",20)+'</span><b>Drive my car alone</b><small>Driver moves the car. Fixed fare.</small></button></div>';
+  var places='<div class="opts">'+PLACES.map(function(p,i){return '<button type="button" class="opt" data-act="dest" data-arg="'+i+'" aria-pressed="'+(S.dest===i)+'"><span class="ro-ic">'+ic("pin",18)+'</span><span class="ro-t"><b>'+p.n+'</b><small>'+p.a+'</small></span><span class="ro-r num">'+p.km+' km</span><span class="radio"></span></button>'}).join("")+'</div>';
+  var extra=solo()?
+   '<div class="label">What should the driver do?</div><div class="chips" role="group" aria-label="Task">'+TASKS.map(function(t,i){return '<button type="button" class="chip" data-act="task" data-arg="'+i+'" aria-pressed="'+(S.task===i)+'">'+t+'</button>'}).join("")+'</div>':
+   '<div class="label">How long?</div><div class="card row"><div><b class="head num">'+S.hours+' hours</b><div class="muted small num">'+fmt(3500)+' an hour, 2 hours minimum</div></div><div class="stepper"><button type="button" data-act="hours" data-arg="-1" aria-label="Fewer hours">&minus;</button><button type="button" data-act="hours" data-arg="1" aria-label="More hours">+</button></div></div>';
+  var cars='<div class="chips" role="group" aria-label="Your car">'+CARS.map(function(c,i){return '<button type="button" class="chip" data-act="car" data-arg="'+i+'" aria-pressed="'+(S.car===i)+'">'+c.n+'</button>'}).join("")+'</div>';
+  var when='<div class="chips" role="group" aria-label="When">'+WHEN.map(function(w,i){return '<button type="button" class="chip" data-act="when" data-arg="'+i+'" aria-pressed="'+(S.when===i)+'">'+w.l+'</button>'}).join("")+'</div>';
+  return '<div class="screen"><div class="mapbox" style="height:34%">'+map({nearby:1})+'</div>'+
+  '<button type="button" class="fab" data-act="go" data-arg="welcome" aria-label="Back">'+ic("back",20)+'</button>'+
+  '<div class="sheet tall"><h2 class="head" style="font-size:24px">Where to?</h2><p class="muted small" style="margin:2px 0 14px">Pickup at Lekki Phase 1. 3 vetted drivers nearby.</p>'+bizbar()+
+  types+'<div class="label">Destination</div>'+places+extra+'<div class="label">Your car</div>'+cars+'<div class="label">When</div>'+when+
+  '<div class="ctabar"><button type="button" class="btn primary split" data-act="go" data-arg="quote"><span>See price</span><b class="num">'+fmt(q.total)+'</b></button></div></div></div>';
+}
+function quoteScreen(){
+  var q=quote(), d=PLACES[S.dest];
+  return '<div class="screen"><div class="mapbox">'+map({route:1})+'</div>'+
+  '<button type="button" class="fab" data-act="go" data-arg="book" aria-label="Back">'+ic("back",20)+'</button>'+
+  '<div class="sheet"><div class="row"><span class="tag">'+typeLabel()+'</span><span class="muted small">'+WHEN[S.when].l+'</span></div>'+
+  '<div style="margin:12px 0 2px" class="muted small">Lekki Phase 1 to '+d.n+'</div>'+
+  '<div class="fare num">'+fmt(q.total)+'</div><div class="lockrow" style="margin-top:6px">'+ic("lock",15)+' Price is fixed once a driver accepts</div>'+
+  '<div class="divider"></div>'+
+  '<div class="row"><span class="muted">'+(solo()?"Flat fare, about "+d.km+" km":S.hours+" hours at "+fmt(3500))+'</span><span class="num">'+fmt(q.base)+'</span></div>'+
+  (q.night?'<div class="row"><span class="muted">Night trip</span><span class="num">'+fmt(q.night)+'</span></div>':'')+
+  '<div class="row"><span class="muted">Car</span><span>'+CARS[S.car].n+'</span></div>'+
+  (S.acct==="business"&&S.biz?'<div class="row"><span class="muted">Billed to</span><span>'+esc(S.biz.name)+'</span></div><div class="row"><span class="muted">Booked for</span><span>'+esc(whoName())+'</span></div>':'')+
+  '<div class="divider"></div>'+
+  '<div class="check-row"><span class="ic">'+ic("shield",14)+'</span><span>Driver visited in person at home and by two guarantors.</span></div>'+
+  '<div class="check-row"><span class="ic">'+ic("lock",14)+'</span><span>Payment is held until your trip ends.</span></div>'+
+  '<div style="height:16px"></div><button type="button" class="btn primary" data-act="request">Request a driver</button></div></div>';
+}
+function findingScreen(){
+  var L=["Checking drivers near Lekki Phase 1","Confirming VeriQuest vetting","Matching your car and trip"];
+  var steps='<ul class="fsteps">'+L.map(function(t,i){var c=S.find>i?"done":S.find===i?"now":"";return '<li class="'+c+'"><span class="dot">'+(S.find>i?ic("check",14):"")+'</span>'+t+'</li>'}).join("")+'</ul>';
+  return '<div class="screen"><div class="mapbox" style="height:58%">'+map({radar:1})+'</div>'+
+  '<div class="sheet"><h2 class="head" style="font-size:22px">Finding your driver</h2>'+steps+
+  '<div style="height:12px"></div><div class="skel" aria-hidden="true"></div><div style="height:14px"></div><button type="button" class="btn ghost" data-act="cancel">Cancel request</button></div></div>';
+}
+function timeline(st){
+  var L=["On the way","Arrived","On trip","Done"];
+  return '<ol class="tl" aria-label="Trip progress">'+L.map(function(l,i){return '<li class="'+(i<st?"done":i===st?"now":"")+'"><i></i><span>'+l+'</span></li>'}).join("")+'</ol>';
+}
+function driverRow(){
+  return '<div class="drv"><div class="av">'+avatar(56)+'</div><div class="drv-t"><b>Emeka Okafor</b><span class="muted small">'+ic("star",13,'class="starfill"')+' 4.9 &middot; 312 trips</span><span class="vet">'+ic("shield",13)+' Vetted by VeriQuest</span></div>'+
+  '<div class="drv-a"><button type="button" class="icon-btn" data-act="toast" data-arg="Calls go through Driva so your number stays private." aria-label="Call driver">'+ic("phone",19)+'</button><button type="button" class="icon-btn" data-act="toast" data-arg="Chat goes through Driva so your number stays private." aria-label="Message driver">'+ic("chat",19)+'</button></div></div>';
+}
+function tripScreen(){
+  var st=S.stage, d=PLACES[S.dest];
+  var heads=["Emeka is on the way","Emeka has arrived","On the way to "+d.n];
+  var etaLabel=["Arrives in","Waiting at pickup","Arrives in"];
+  var body="";
+  if(st===1){
+    body='<div class="pinbox"><b class="head">Your trip PIN</b><div class="digs">'+PIN.split("").map(function(c){return '<span class="pindig num">'+c+'</span>'}).join("")+'</div><small>Check his face matches the photo above. Give him the PIN only then.</small></div>';
+    if(solo()){
+      var all=S.photos.every(Boolean);
+      body+='<div class="card"><b class="head">Handover check</b><p class="muted small" style="margin:2px 0 12px">Emeka photographs your car before leaving. Tap a tile to simulate a photo.</p><div class="photos">'+SHOTS.map(function(s,i){return '<button type="button" class="photo" data-act="photo" data-arg="'+i+'" aria-pressed="'+!!S.photos[i]+'">'+ic(S.photos[i]?"check":"camera",22)+s+'</button>'}).join("")+'</div></div><div style="height:12px"></div><button type="button" class="btn primary" data-act="handover" '+(all?"":"disabled")+'>Confirm handover</button>';
+    } else body+='<p class="muted small" style="text-align:center">The trip starts when Emeka enters this PIN.</p>';
+  }
+  if(st===2){
+    body='<div class="card row"><div><b class="head">'+(solo()?"Live tracking is on":"Heading to "+d.n)+'</b><div class="muted small">'+(solo()?"Share the link with whoever receives the car":"Driving "+CARS[S.car].n)+'</div></div></div>'+
+    '<div class="safety"><button type="button" class="btn ghost sm" style="justify-content:center" data-act="toast" data-arg="A live tracking link would be shared here.">'+ic("share",17)+' Share trip</button><button type="button" class="btn ghost sm" style="justify-content:center;color:var(--warn)" data-act="toast" data-arg="In the full app this alerts Driva support and your emergency contact.">'+ic("alert",17)+' Emergency</button></div>';
+  }
+  var eta=st===1?'<span class="eta-big">Here</span>':'<span class="eta-big num" id="eta">6 min</span>';
+  return '<div class="screen"><div class="mapbox" style="height:56%">'+map({route:1,car:st<2?"approach":"route"})+'</div>'+
+  (S.alert&&st===2?'<div class="alertbar" role="alert"><b>Route change detected</b>Emeka left the agreed route. Driva support is checking in. <button type="button" class="link" style="color:var(--warn);padding:4px 0 0;display:block" data-act="clearAlert">He is avoiding traffic</button></div>':'')+
+  '<div class="demo"><button type="button" data-act="next">Next step (prototype)</button>'+(st===2&&!S.alert?'<button type="button" data-act="alert">Simulate route change</button>':'')+'</div>'+
+  '<div class="sheet"><div class="stagebody">'+timeline(st)+
+  '<div class="eta-row"><div><div class="muted small">'+etaLabel[st]+'</div>'+eta+'</div><div class="muted small" style="text-align:right">'+heads[st]+'</div></div>'+
+  driverRow()+'<div style="height:14px"></div>'+body+'</div></div></div>';
+}
+function receiptScreen(){
+  var q=quote(), tags=["On time","Careful driver","Clean handling","Great route"];
+  return '<div class="screen"><div class="scroll"><div style="text-align:center"><div class="success pop">'+ic("check",42)+'</div><h1 class="head" style="font-size:28px">Trip complete</h1><p class="muted">Lekki Phase 1 to '+PLACES[S.dest].n+'</p></div>'+
+  '<div class="card" style="margin-top:18px"><div class="row"><span class="muted">Trip</span><span>'+typeLabel()+'</span></div><div class="row"><span class="muted">Driver</span><span>Emeka Okafor</span></div>'+
+  (solo()?'<div class="row"><span class="muted">Return photos</span><span style="color:var(--ok);font-weight:700">Match start photos</span></div>':'<div class="row"><span class="muted">Time</span><span class="num">'+S.hours+' hours</span></div>')+
+  '<div class="divider"></div><div class="row"><b class="head">Total paid</b><span class="fare num" style="font-size:30px">'+fmt(q.total+S.tip)+'</span></div><p class="muted small" style="margin-top:6px">'+payNote()+'</p></div>'+
+  '<div class="label" style="text-align:center">Rate Emeka</div><div class="stars" role="group" aria-label="Rating">'+[1,2,3,4,5].map(function(n){return '<button type="button" class="'+(S.rating>=n?"on":"")+'" data-act="rate" data-arg="'+n+'" aria-label="'+n+' stars">'+svg(P.star,36,S.rating>=n?'style="fill:currentColor"':"")+'</button>'}).join("")+'</div>'+
+  (S.rating?'<div class="chips" style="justify-content:center;margin-top:12px">'+tags.map(function(t){return '<button type="button" class="chip" data-act="tag" data-arg="'+t+'" aria-pressed="'+!!S.tag[t]+'">'+t+'</button>'}).join("")+'</div>':'')+
+  '<div class="label" style="text-align:center">Add a tip</div><div class="chips" style="justify-content:center">'+[0,500,1000,2000].map(function(t){return '<button type="button" class="chip" data-act="tip" data-arg="'+t+'" aria-pressed="'+(S.tip===t)+'">'+(t?fmt(t):"No tip")+'</button>'}).join("")+'</div>'+
+  '<div style="height:20px"></div><button type="button" class="btn primary" data-act="done">Done</button>'+
+  '<div style="text-align:center;margin-top:8px"><button type="button" class="link" data-act="toast" data-arg="Problems go to Driva support. Payment stays held until resolved.">Report a problem with this trip</button></div></div></div>';
+}
+
+/* ---------- driver screens ---------- */
+var reqStart=0, reqTimer=0;
+function dHome(){
+  var q=quote(), earn=Math.round(q.total*(1-FEE)), dd=S.d;
+  var elapsed=reqStart?Math.min(30,(Date.now()-reqStart)/1000):0;
+  var body="";
+  if(!dd.online){
+    body='<div class="empty stagebody"><div class="moon">'+ic("moon",40)+'</div><h2 class="head">You are offline</h2><p class="muted" style="margin:6px 0 18px">Go online to receive trip requests near Lekki.</p><button type="button" class="btn primary" data-act="online">Go online</button></div>';
+  } else if(dd.req==="expired"){
+    body='<div class="empty stagebody"><div class="moon">'+ic("clock",40)+'</div><h2 class="head">Request expired</h2><p class="muted" style="margin:6px 0 18px">That trip went to another driver. Stay online for the next one.</p><button type="button" class="btn ghost" data-act="newreq">Show a sample request</button></div>';
+  } else if(dd.req==="declined"){
+    body='<div class="empty stagebody"><div class="moon">'+ic("car",40)+'</div><h2 class="head">Looking for trips</h2><p class="muted" style="margin:6px 0 18px">New requests near you appear here.</p><button type="button" class="btn ghost" data-act="newreq">Show a sample request</button></div>';
+  } else {
+    body='<div class="stagebody"><div class="req"><div class="row"><div><span class="tag">'+typeLabel()+'</span><div class="muted small" style="margin-top:6px">'+WHEN[S.when].l+'</div></div>'+
+    '<div class="cd" aria-label="Seconds left"><svg viewBox="0 0 44 44"><circle cx="22" cy="22" r="19" fill="none" stroke="var(--line)" stroke-width="3"/><circle class="ringfg" style="animation-delay:-'+elapsed.toFixed(1)+'s" cx="22" cy="22" r="19" fill="none" stroke="var(--amber)" stroke-width="3" stroke-linecap="round" pathLength="1" transform="rotate(-90 22 22)"/></svg><span id="cd" class="num">'+Math.max(0,30-Math.floor(elapsed))+'</span></div></div>'+
+    '<div class="miniroute"><svg viewBox="0 0 320 90" width="100%" aria-hidden="true"><path d="M30 62C90 62 110 24 170 34S260 30 290 24" fill="none" stroke="var(--m-route)" stroke-width="4" stroke-linecap="round" stroke-dasharray="1 8"/><circle cx="30" cy="62" r="8" fill="#0B2545" stroke="#fff" stroke-width="3"/><path d="M290 36C280 24 280 10 290 10S300 24 290 36Z" fill="#F5A524" stroke="#0B2545" stroke-width="2"/></svg></div>'+
+    '<b class="head" style="font-size:17px">Lekki Phase 1 to '+PLACES[S.dest].n+'</b><div class="muted small">'+(solo()?PLACES[S.dest].km+" km, "+TASKS[S.task].toLowerCase():S.hours+" hours, client rides along")+'</div>'+
+    '<div class="divider"></div><div class="row"><span class="muted">Trip fare</span><span class="num">'+fmt(q.total)+'</span></div><div class="row"><span class="muted">Driva fee (15%)</span><span class="num">&minus;'+fmt(q.total-earn)+'</span></div>'+
+    '<div class="row"><b class="head">You earn</b><span class="fare num" style="font-size:30px">'+fmt(earn)+'</span></div><div style="height:14px"></div>'+
+    '<div style="display:flex;gap:10px"><button type="button" class="btn ghost" style="flex:1" data-act="decline">Decline</button><button type="button" class="btn primary" style="flex:2" data-act="accept">Accept trip</button></div></div></div>';
+  }
+  return '<div class="screen"><div class="dtop"><div class="row"><div class="brand">'+logo(34)+'<span class="word" style="font-size:20px">Driva</span></div>'+
+  '<button type="button" class="toggle" data-act="online" aria-pressed="'+dd.online+'">'+(dd.online?"Online":"Offline")+'<i></i></button></div>'+
+  '<div class="earn num" id="earn" data-to="18700">'+fmt(18700)+'</div><div style="color:#C5D2E6;font-size:13px">Earned today</div>'+
+  '<div class="stats"><div><b>3</b><span>Trips</span></div><div><b>4.9</b><span>Rating</span></div><div><b>96%</b><span>Accepted</span></div></div></div>'+
+  '<div class="dbody">'+body+'</div></div>';
+}
+function dTrip(){
+  var dd=S.d, st=dd.stage, d=PLACES[S.dest];
+  var body="";
+  if(st===0){
+    body='<div class="card row"><div><b class="head">Lekki Phase 1</b><div class="muted small">Client: Tolu A.</div></div><div style="text-align:right"><div class="muted small">Arrive in</div><b class="head num" id="eta">6 min</b></div></div><div style="height:12px"></div>'+
+    '<button type="button" class="btn ghost" data-act="toast" data-arg="Turn by turn navigation opens in the full app." style="margin-bottom:10px">'+ic("nav",18)+' Navigate to pickup</button><button type="button" class="btn primary" data-act="dArrive">I have arrived</button>';
+  }
+  if(st===1){
+    var digs=[0,1,2,3].map(function(i){return '<span class="pindig num">'+(dd.pin[i]||"")+'</span>'}).join("");
+    var pad=[1,2,3,4,5,6,7,8,9].map(function(n){return '<button type="button" data-act="key" data-arg="'+n+'">'+n+'</button>'}).join("")+'<button type="button" data-act="key" data-arg="back" aria-label="Delete">'+ic("backspace",22)+'</button><button type="button" data-act="key" data-arg="0">0</button><span></span>';
+    body='<div class="card"><b class="head">Enter the client PIN</b><div class="muted small" style="margin:2px 0 12px">Ask Tolu for the 4 digit PIN. Prototype PIN: '+PIN+'</div><div class="pinrow '+(dd.pinOk?"ok":dd.bad?"bad":"")+'">'+digs+'</div>'+(dd.pinOk?'':'<div class="pad">'+pad+'</div>')+'</div>';
+    if(solo()){
+      body+='<div style="height:12px"></div><div class="card"><b class="head">Photograph the car</b><div class="photos" style="margin-top:10px">'+SHOTS.map(function(s,i){return '<button type="button" class="photo" data-act="dPhoto" data-arg="'+i+'" aria-pressed="'+!!dd.photos[i]+'">'+ic(dd.photos[i]?"check":"camera",22)+s+'</button>'}).join("")+'</div></div>';
+    }
+    var ready=dd.pinOk&&(!solo()||dd.photos.every(Boolean));
+    body+='<div style="height:12px"></div><button type="button" class="btn primary" data-act="dStart" '+(ready?"":"disabled")+'>Start trip</button>';
+  }
+  if(st===2){
+    body='<div class="card row"><div><b class="head">'+d.n+'</b><div class="muted small">Stay on the agreed route</div></div><div style="text-align:right"><div class="muted small">Arrive in</div><b class="head num" id="eta">16 min</b></div></div><div style="height:12px"></div><button type="button" class="btn primary" data-act="dEnd">End trip</button>';
+  }
+  var heads=["Head to pickup","Verify and start","Trip in progress"];
+  return '<div class="screen"><div class="mapbox" style="height:46%">'+map({route:1,car:st<2?"approach":"route"})+'</div>'+
+  '<div class="sheet"><div class="stagebody"><h2 class="head" style="font-size:22px;margin-bottom:12px">'+heads[st]+'</h2>'+body+'</div></div></div>';
+}
+function dSummary(){
+  var q=quote(), earn=Math.round(q.total*(1-FEE));
+  return '<div class="screen"><div class="scroll"><div style="text-align:center"><div class="success pop">'+ic("check",42)+'</div><h1 class="head" style="font-size:28px">Trip complete</h1><p class="muted">Lekki Phase 1 to '+PLACES[S.dest].n+'</p></div>'+
+  '<div class="card" style="margin-top:18px"><div class="row"><span class="muted">Trip fare</span><span class="num">'+fmt(q.total)+'</span></div><div class="row"><span class="muted">Driva fee (15%)</span><span class="num">&minus;'+fmt(q.total-earn)+'</span></div><div class="divider"></div>'+
+  '<div class="row"><b class="head">You earn</b><span class="fare num" style="font-size:30px">'+fmt(earn)+'</span></div><p class="muted small" style="margin-top:6px">Paid to your bank account at the end of the day.</p></div>'+
+  '<div class="card" style="margin-top:14px;text-align:center"><b class="head">Rate Tolu</b><div class="stars" style="margin-top:8px" role="group" aria-label="Rate the client">'+[1,2,3,4,5].map(function(n){return '<button type="button" class="'+(S.d.rating>=n?"on":"")+'" data-act="dRate" data-arg="'+n+'" aria-label="'+n+' stars">'+svg(P.star,32,S.d.rating>=n?'style="fill:currentColor"':"")+'</button>'}).join("")+'</div></div>'+
+  '<div style="height:20px"></div><button type="button" class="btn primary" data-act="dDone">Back to home</button></div></div>';
+}
+
+/* ---------- accounts and registration ---------- */
+var V={};
+var SAMPLE={pn:"Tolu Adebayo",pp:"0803 555 0142",ecn:"Bimpe Adebayo",ecp:"0807 555 0190",code:"1234",
+  cname:"Lagoon Freight Ltd",rc:"RC 1234567",ind:"Logistics",cn:"Ade Okon",ce:"ade@lagoonfreight.example",cp:"0802 555 0111",
+  dn:"Kunle Bello",dp:"0805 555 0123",nin:"12345678901",lic:"LND 4829301",exp:"4 to 7 years",ha:"12 Adeola Close, Ajah, Lagos",
+  g1n:"Funke Bello",g1p:"0809 555 0144",g1r:"Sister, nurse",g1a:"5 Bode Street, Surulere",
+  g2n:"Segun Ojo",g2p:"0810 555 0155",g2r:"Church elder, trader",g2a:"22 Ladipo Road, Mushin"};
+var esc=function(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;")};
+var first=function(s){return String(s||"").trim().split(" ")[0]||"there"};
+function need(list){for(var i=0;i<list.length;i++){var k=list[i][0];if(!V[k]||!String(V[k]).trim()){toast(list[i][1]);return false}}return true}
+function field(n,l,o){o=o||{};return '<div class="field"><label for="f_'+n+'">'+l+'</label><input id="f_'+n+'" name="'+n+'" type="'+(o.t||"text")+'" '+(o.m?'inputmode="'+o.m+'" ':'')+(o.max?'maxlength="'+o.max+'" ':'')+'autocomplete="off" placeholder="'+esc(o.ph||"")+'" value="'+esc(V[n])+'"></div>'}
+function picks(n,list){return '<div class="chips" role="group">'+list.map(function(x){return '<button type="button" class="chip" data-act="pick" data-arg="'+n+':'+x+'" aria-pressed="'+(V[n]===x)+'">'+x+'</button>'}).join("")+'</div>'}
+function tgl(n,t,s){return '<button type="button" class="opt" data-act="tog" data-arg="'+n+'" aria-pressed="'+!!V[n]+'" style="background:var(--surface);border-color:var(--line);margin-bottom:8px"><span class="radio"></span><span class="ro-t"><b>'+t+'</b>'+(s?'<small>'+s+'</small>':'')+'</span></button>'}
+function btnAttr(a){return 'data-act="'+a[0]+'"'+(a[1]!=null?' data-arg="'+a[1]+'"':'')}
+function form(o){
+  var head='<div class="fhead">'+(o.back?'<button type="button" class="icon-btn" '+btnAttr(o.back)+' aria-label="Back">'+ic("back",20)+'</button>':'')+
+    (o.total?'<div class="prog" role="progressbar" aria-valuemin="0" aria-valuemax="'+o.total+'" aria-valuenow="'+o.step+'"><i style="width:'+Math.round(o.step/o.total*100)+'%"></i></div><span class="muted small num">'+o.step+' of '+o.total+'</span>':'')+'</div>';
+  var foot=o.cta?'<div class="ffoot"><button type="button" class="btn primary" '+btnAttr(o.cta)+'>'+o.cta[2]+'</button>'+(o.alt?'<button type="button" class="link" style="display:block;margin:8px auto 0" '+btnAttr(o.alt)+'>'+o.alt[2]+'</button>':'')+'</div>':'';
+  return '<div class="screen">'+head+'<div class="fbody"><div class="stagebody"><h1 class="head" style="font-size:26px">'+o.title+'</h1>'+(o.sub?'<p class="muted" style="margin-top:6px">'+o.sub+'</p>':'')+'<div style="height:16px"></div>'+o.body+'</div></div>'+foot+'</div>';
+}
+function finish(o){
+  return '<div class="screen"><div class="fbody"><div class="stagebody" style="padding-top:36px"><div style="text-align:center"><div class="success pop">'+ic("check",42)+'</div><h1 class="head" style="font-size:28px">'+o.title+'</h1><p class="muted" style="margin-top:6px">'+o.sub+'</p></div><div style="height:18px"></div>'+(o.body||"")+'</div></div>'+
+  '<div class="ffoot"><button type="button" class="btn primary" '+btnAttr(o.cta)+'>'+o.cta[2]+'</button>'+(o.alt?'<button type="button" class="link" style="display:block;margin:8px auto 0" '+btnAttr(o.alt)+'>'+o.alt[2]+'</button>':'')+'</div></div>';
+}
+function steps(L,cur){return '<ul class="fsteps">'+L.map(function(t,i){var c=i<cur?"done":i===cur?"now":"";return '<li class="'+c+'"><span class="dot">'+(i<cur?ic("check",14):"")+'</span>'+t+'</li>'}).join("")+'</ul>'}
+function team(){return [{n:(S.biz&&S.biz.cn)||V.cn||"You",r:"Account owner"}].concat(S.extra)}
+function whoName(){var t=team();return (t[S.who]||t[0]).n}
+function spend(){return S.trips.reduce(function(a,t){return a+t.a},0)}
+function payNote(){return S.acct==="business"&&S.biz?"Added to your October invoice for "+esc(S.biz.name)+". Booked for "+esc(whoName())+".":"Paid from your Driva wallet. Receipt sent to your email."}
+function bizbar(){
+  if(!S.biz) return "";
+  var h='<div class="chips" style="margin-bottom:14px" role="group" aria-label="Account"><button type="button" class="chip" data-act="acct" data-arg="personal" aria-pressed="'+(S.acct!=="business")+'">Personal</button><button type="button" class="chip" data-act="acct" data-arg="business" aria-pressed="'+(S.acct==="business")+'">'+esc(S.biz.name)+'</button></div>';
+  if(S.acct==="business") h+='<div class="label" style="margin-top:0">Booked for</div><div class="chips" style="margin-bottom:14px" role="group" aria-label="Booked for">'+team().map(function(m,i){return '<button type="button" class="chip" data-act="who" data-arg="'+i+'" aria-pressed="'+(S.who===i)+'">'+esc(m.n)+'</button>'}).join("")+'</div>';
+  return h;
+}
+function addTeamForm(){
+  return '<div class="card" style="margin-top:12px"><b class="head">Add a team member</b><div style="height:10px"></div>'+field("tn","Name",{ph:"Chioma Nwosu"})+field("tp","Phone number",{t:"tel",m:"tel",ph:"0806 000 0000"})+'<button type="button" class="btn ghost sm" style="justify-content:center;width:100%" data-act="addMember">'+ic("plus",16)+' Add person</button></div>';
+}
+function teamList(){
+  return '<div class="card">'+team().map(function(m){return '<div class="row"><div style="min-width:0"><b>'+esc(m.n)+'</b><div class="muted small">'+esc(m.r)+'</div></div>'+(m.r==="Account owner"?'<span class="tag">Owner</span>':'')+'</div>'}).join("")+'</div>';
+}
+
+function signupScreen(){
+  var su=S.su,k=su.kind,s=su.step,fill=["fill",null,"Fill with sample details"];
+  if(s===0){
+    var cards=[["personal","user","Personal","Book drivers for your own car."],["business","building","Business","Company cars and staff trips, with one monthly invoice."],["driver","car","Driver","Earn by driving for Driva clients."]];
+    return form({total:0,back:["suBack"],title:"Create your account",sub:"Choose how you will use Driva.",body:cards.map(function(c){return '<button type="button" class="acct" data-act="signup" data-arg="'+c[0]+'"><span class="tc-ic">'+ic(c[1],22)+'</span><span style="flex:1;min-width:0"><b class="head" style="font-size:17px;display:block">'+c[2]+'</b><span class="muted small">'+c[3]+'</span></span>'+ic("arrow",18)+'</button>'}).join("")});
+  }
+  if(k==="personal"){
+    if(s===1) return form({step:1,total:2,back:["suBack"],title:"About you",sub:"We use your phone number to confirm your trips.",
+      body:field("pn","Full name",{ph:"Tolu Adebayo"})+field("pp","Phone number",{t:"tel",m:"tel",ph:"0803 000 0000"})+'<div class="label" style="margin-top:6px">Emergency contact <span class="muted" style="font-weight:500">(optional)</span></div>'+field("ecn","Name")+field("ecp","Phone number",{t:"tel",m:"tel"}),
+      cta:["suNext",null,"Send code"],alt:fill});
+    if(s===2) return form({step:2,total:2,back:["suBack"],title:"Enter the code",sub:"We sent a 4 digit code to "+esc(V.pp)+". Prototype: any 4 digits work.",
+      body:field("code","Code",{m:"numeric",max:4,ph:"1234"}),cta:["suNext",null,"Verify and continue"]});
+    return finish({title:"Welcome, "+esc(first(V.pn)),sub:"Your account is ready. You can book a driver now.",cta:["go","book","Book a driver"]});
+  }
+  if(s===1) return form({step:1,total:3,back:["suBack"],title:"Your company",sub:"Tell us who is opening the account.",
+    body:field("cname","Company name",{ph:"Lagoon Freight Ltd"})+field("rc","RC number",{ph:"RC 1234567"})+'<div class="label" style="margin-top:4px">Industry</div>'+picks("ind",["Logistics","Oil and gas","Banking","Hospitality","Embassy","Other"])+'<div style="height:16px"></div>'+field("cn","Contact person",{ph:"Ade Okon"})+field("ce","Work email",{t:"email",m:"email",ph:"name@company.com"})+field("cp","Phone number",{t:"tel",m:"tel"}),
+    cta:["suNext",null,"Continue"],alt:fill});
+  if(s===2){
+    var bill=V.bill||"invoice";
+    var bo=[["invoice","Monthly invoice","Pay once a month for all trips. Switched on after your company check."],["wallet","Pay per trip","Charged to your company wallet after each trip."]].map(function(b){return '<button type="button" class="opt" data-act="pick" data-arg="bill:'+b[0]+'" aria-pressed="'+(bill===b[0])+'" style="background:var(--surface);border-color:var(--line);margin-bottom:8px"><span class="radio"></span><span class="ro-t"><b>'+b[1]+'</b><small>'+b[2]+'</small></span></button>'}).join("");
+    return form({step:2,total:3,back:["suBack"],title:"Billing and team",sub:"Decide how trips are paid and who can book.",
+      body:'<div class="label" style="margin-top:0">How do you want to pay?</div>'+bo+'<div class="label">Booking rules</div>'+tgl("approve","Trips need my approval","Staff requests wait for you to approve them.")+
+        '<div class="label">Monthly limit per person</div>'+picks("limit",["No limit","₦100,000","₦250,000","₦500,000"])+'<div class="label">Team</div>'+teamList()+addTeamForm(),
+      cta:["suNext",null,"Continue"]});
+  }
+  if(s===3) return form({step:3,total:3,back:["suBack"],title:"Verify your company",sub:"We confirm your registration with CAC before invoicing starts.",
+    body:'<div class="photos" style="grid-template-columns:1fr 1fr">'+[["cac","CAC certificate"],["dir","Owner ID"]].map(function(x){return '<button type="button" class="photo" data-act="tog" data-arg="'+x[0]+'" aria-pressed="'+!!V[x[0]]+'">'+ic(V[x[0]]?"check":"doc",24)+x[1]+'</button>'}).join("")+'</div><p class="muted small" style="margin-top:10px">Tap a tile to simulate an upload.</p>',
+    cta:["suNext",null,"Submit for review"]});
+  return finish({title:"Account submitted",sub:esc(S.biz.name)+" is ready for booking. Invoicing starts after the company check.",
+    body:steps(["Account created","Company check, about 1 working day","Monthly invoicing switched on"],1),
+    cta:["go","biz","Open business dashboard"],alt:["bookBiz",null,"Book a driver now"]});
+}
+
+function bizScreen(){
+  var b=S.biz, tm=team();
+  var rows=S.trips.map(function(t){var w=t.who||tm[(t.w||0)%tm.length].n;return '<div class="row"><div style="min-width:0"><b>'+esc(t.r)+'</b><div class="muted small">'+esc(t.d)+' &middot; '+esc(w)+' &middot; '+t.t+'</div></div><span class="num">'+fmt(t.a)+'</span></div>'}).join("");
+  return '<div class="screen"><div class="dtop"><div class="row"><div style="display:flex;align-items:center;gap:10px;min-width:0"><button type="button" class="icon-btn" style="background:rgba(255,255,255,.14);border-color:transparent;color:#fff" data-act="go" data-arg="welcome" aria-label="Back">'+ic("back",20)+'</button><b class="head" style="font-size:18px">'+esc(b.name)+'</b></div><span class="vet" style="background:rgba(255,255,255,.14);color:#FFC857;flex:none">'+ic("clock",13)+' Check in progress</span></div>'+
+  '<div class="earn num">'+fmt(spend())+'</div><div style="color:#C5D2E6;font-size:13px">October spend</div>'+
+  '<div class="stats"><div><b>'+S.trips.length+'</b><span>Trips</span></div><div><b>'+tm.length+'</b><span>People</span></div><div><b>'+(b.bill==="wallet"?"Wallet":"Invoice")+'</b><span>Billing</span></div></div></div>'+
+  '<div class="dbody"><div class="stagebody"><button type="button" class="btn primary" data-act="bookBiz">Book a driver for the team</button>'+
+  '<div class="label">Recent trips</div><p class="muted small" style="margin:-6px 0 10px">Sample data for this preview.</p><div class="card">'+rows+'</div>'+
+  '<div class="label">Team</div>'+teamList()+addTeamForm()+
+  '<div class="label">Account rules</div><div class="card"><div class="row"><span class="muted">Billing</span><span>'+(b.bill==="wallet"?"Pay per trip":"Monthly invoice")+'</span></div><div class="row"><span class="muted">Trip approval</span><span>'+(b.approve?"Required":"Not required")+'</span></div><div class="row"><span class="muted">Limit per person</span><span class="num">'+esc(b.limit)+'</span></div></div>'+
+  '<div style="height:14px"></div><button type="button" class="btn ghost" data-act="toast" data-arg="The October invoice would download here as a PDF.">Download October invoice</button></div></div></div>';
+}
+
+function dReg(){
+  var dd=S.d, s=dd.rs, fill=["fill",null,"Fill with sample details"];
+  if(s===0){
+    var L=["Your NIN and a valid driving licence","A passport photograph and a selfie","Two guarantors who agree to a home visit","A home visit by a VeriQuest officer"];
+    return form({total:0,back:["dBack"],title:"Drive with Driva",sub:"Choose your hours. Keep 85% of every fare for your first 12 months.",
+      body:'<div class="card"><b class="head">What you will need</b><div style="height:12px"></div>'+L.map(function(t){return '<div class="check-row"><span class="ic">'+ic("check",14)+'</span><span>'+t+'</span></div>'}).join("")+'</div><p class="muted small" style="margin-top:12px">Vetting is free for founding drivers.</p>',
+      cta:["dNext",null,"Start registration"]});
+  }
+  if(s===1) return form({step:1,total:4,back:["dBack"],title:"About you",sub:"These must match your ID.",
+    body:field("dn","Full name")+field("dp","Phone number",{t:"tel",m:"tel"})+field("nin","NIN",{m:"numeric",max:11,ph:"11 digits"})+field("lic","Driving licence number")+'<div class="label" style="margin-top:4px">Years of driving</div>'+picks("exp",["Under 3 years","4 to 7 years","8 years or more"]),
+    cta:["dNext",null,"Continue"],alt:fill});
+  if(s===2) return form({step:2,total:4,back:["dBack"],title:"Your documents",sub:"Clear photos of the original documents.",
+    body:'<div class="photos">'+[["doc0","Licence"],["doc1","NIN"],["doc2","Passport"]].map(function(x){return '<button type="button" class="photo" data-act="tog" data-arg="'+x[0]+'" aria-pressed="'+!!V[x[0]]+'">'+ic(V[x[0]]?"check":"camera",24)+x[1]+'</button>'}).join("")+'</div><p class="muted small" style="margin-top:10px">Tap a tile to simulate an upload.</p>',
+    cta:["dNext",null,"Continue"]});
+  if(s===3){
+    var g=function(n,t){return '<div class="gcard"><b class="head">'+t+'</b><div style="height:10px"></div>'+field(n+"n","Full name")+field(n+"p","Phone number",{t:"tel",m:"tel"})+field(n+"r","Relationship and occupation")+field(n+"a","Home address")+'</div>'};
+    return form({step:3,total:4,back:["dBack"],title:"Home and guarantors",sub:"A VeriQuest officer visits you and each guarantor in person. A guarantor is a working adult who has known you for at least 2 years, lives in Lagos and agrees to the visit.",
+      body:field("ha","Your home address")+g("g1","Guarantor 1")+g("g2","Guarantor 2"),cta:["dNext",null,"Continue"],alt:fill});
+  }
+  if(s===4) return form({step:4,total:4,back:["dBack"],title:"Consent and selfie",sub:"We need your permission to run the checks.",
+    body:tgl("c1","I agree to a home visit","A VeriQuest officer will confirm where I live.")+tgl("c2","I agree to my guarantors being visited","Each guarantor is visited at home.")+tgl("c3","I agree to ID and criminal record checks","Checked against NIN, licence and police records.")+
+      '<div class="label">Selfie</div><div class="photos" style="grid-template-columns:1fr"><button type="button" class="photo" data-act="tog" data-arg="selfie" aria-pressed="'+!!V.selfie+'">'+ic(V.selfie?"check":"camera",24)+'Take a selfie</button></div>',
+    cta:["dNext",null,"Submit application"]});
+  var vet=dd.vet, ok=vet>=6;
+  return form({total:0,back:["backToWelcome"],title:ok?"You are approved":"Vetting in progress",sub:ok?"You can go online and accept trips.":"VeriQuest will call "+esc(first(V.dn||"you"))+" to book your home visit.",
+    body:steps(["Application received","Documents checked","Home visit","Guarantor visits","Criminal record check","Approved"],vet),
+    cta:ok?["dHomeGo",null,"Go to driver home"]:["dMove",null,"Move vetting forward (prototype)"]});
+}
+
+/* ---------- render ---------- */
+var lastScreen="", lastStage="", findTs=[], cdInt=0;
+function render(){
+  cancelAnimationFrame(raf);
+  var isC=S.role==="client", dd=S.d;
+  var screenKey=S.role+"|"+(isC?S.screen:dd.screen);
+  var stageKey=screenKey+"|"+(isC?S.stage+"|"+S.find+"|"+S.su.step+"|"+S.su.kind:dd.stage+"|"+dd.online+"|"+dd.req+"|"+dd.rs);
+  var anim=screenKey!==lastScreen?"screen":(stageKey!==lastStage?"stage":"none");
+  lastScreen=screenKey; lastStage=stageKey;
+  var v=$("#view"), oldSheet=$(".sheet",v)||$(".scroll",v)||$(".dbody",v)||$(".fbody",v), sc=oldSheet?oldSheet.scrollTop:0;
+  v.dataset.animate=anim;
+  var h="";
+  if(isC) h=({welcome:welcome,book:bookScreen,quote:quoteScreen,finding:findingScreen,trip:tripScreen,receipt:receiptScreen,signup:signupScreen,biz:bizScreen})[S.screen]();
+  else h=({home:dHome,trip:dTrip,summary:dSummary,reg:dReg})[dd.screen]();
+  v.innerHTML=h;
+  if(anim!=="screen"&&sc){var ns=$(".sheet",v)||$(".scroll",v)||$(".dbody",v)||$(".fbody",v); if(ns) ns.scrollTop=sc}
+  $("#rc").setAttribute("aria-pressed",isC); $("#rd").setAttribute("aria-pressed",!isC);
+  animateCar();
+  syncRequestTimer();
+  if(anim==="screen"&&!isC&&dd.screen==="home") countUp();
+}
+function countUp(){
+  var el=$("#earn"); if(!el||reduce) return;
+  var to=+el.dataset.to, t0=performance.now();
+  (function s(){var p=Math.min(1,(performance.now()-t0)/900);el.textContent=fmt(to*(1-Math.pow(1-p,3)));if(p<1)requestAnimationFrame(s)})();
+}
+function syncRequestTimer(){
+  var live=S.role==="driver"&&S.d.screen==="home"&&S.d.online&&S.d.req==="new";
+  if(live){
+    if(!reqStart) reqStart=Date.now();
+    if(!cdInt) cdInt=setInterval(function(){
+      var left=30-Math.floor((Date.now()-reqStart)/1000);
+      var el=$("#cd"); if(el) el.textContent=Math.max(0,left);
+      if(left<=0){S.d.req="expired";clearInterval(cdInt);cdInt=0;reqStart=0;render()}
+    },1000);
+  } else { clearInterval(cdInt);cdInt=0; if(!(S.role==="driver"&&S.d.screen==="home"&&S.d.online&&S.d.req==="new")) reqStart=0; }
+}
+function clearFind(){findTs.forEach(clearTimeout);findTs=[]}
+function startFind(){
+  clearFind(); S.screen="finding"; S.find=0; render();
+  [1,2,3].forEach(function(n,i){findTs.push(setTimeout(function(){
+    if(S.screen!=="finding") return;
+    S.find=n;
+    if(n===3){S.screen="trip";S.stage=0;S.photos=[0,0,0,0,0];S.alert=0;S.apStart=performance.now()}
+    render();
+  },(i+1)*(reduce?300:1000)))});
+}
+
+var A={
+  openSignup:function(){S.su={kind:"",step:0};S.screen="signup";render()},
+  signup:function(v){if(v==="driver"){A.regDriver();return}S.su.kind=v;S.su.step=1;render()},
+  suBack:function(){var su=S.su;if(su.step<=0){S.screen="welcome"}else if(su.step===1){su.step=0;su.kind=""}else{su.step--}render()},
+  suNext:function(){
+    var su=S.su,k=su.kind,s=su.step;
+    if(k==="personal"){
+      if(s===1){if(!need([["pn","Enter your full name."],["pp","Enter your phone number."]]))return;su.step=2}
+      else if(s===2){if(!/^\d{4}$/.test(V.code||"")){toast("Enter the 4 digit code.");return}su.step=3;S.acct="personal"}
+    } else if(k==="business"){
+      if(s===1){
+        if(!need([["cname","Enter the company name."],["rc","Enter the RC number."],["cn","Enter the contact person."],["ce","Enter a work email."]]))return;
+        if(String(V.ce).indexOf("@")<1){toast("Enter a valid work email.");return}
+        if(!V.ind){toast("Choose the industry.");return}
+        su.step=2;
+      } else if(s===2){su.step=3}
+      else if(s===3){
+        if(!V.cac||!V.dir){toast("Add both documents.");return}
+        S.biz={name:V.cname.trim(),cn:V.cn.trim(),bill:V.bill||"invoice",approve:!!V.approve,limit:V.limit||"No limit"};
+        S.acct="business";S.who=0;su.step=4;
+      }
+    }
+    render();
+  },
+  fill:function(){for(var k in SAMPLE)V[k]=SAMPLE[k];render()},
+  pick:function(v){var i=v.indexOf(":");V[v.slice(0,i)]=v.slice(i+1);render()},
+  tog:function(v){V[v]=!V[v];render()},
+  addMember:function(){if(!need([["tn","Enter the team member name."]]))return;S.extra.push({n:V.tn.trim(),r:(V.tp||"").trim()||"Staff"});V.tn="";V.tp="";render()},
+  acct:function(v){S.acct=v;S.who=0;render()},
+  who:function(v){S.who=+v;render()},
+  bookBiz:function(){S.acct="business";S.screen="book";render()},
+  regDriver:function(){S.role="driver";S.d.screen="reg";S.d.rs=0;S.d.vet=1;render()},
+  backToWelcome:function(){S.role="client";S.screen="welcome";S.d.screen="home";render()},
+  dBack:function(){var d=S.d;if(d.rs<=0){A.backToWelcome();return}d.rs--;render()},
+  dNext:function(){
+    var d=S.d,s=d.rs;
+    if(s===1){
+      if(!need([["dn","Enter your full name."],["dp","Enter your phone number."],["nin","Enter your NIN."],["lic","Enter your licence number."]]))return;
+      if(!/^\d{11}$/.test(String(V.nin).replace(/\s/g,""))){toast("A NIN has 11 digits.");return}
+      if(!V.exp){toast("Choose your years of driving.");return}
+    } else if(s===2){
+      if(!(V.doc0&&V.doc1&&V.doc2)){toast("Add all three documents.");return}
+    } else if(s===3){
+      if(!need([["ha","Enter your home address."],["g1n","Enter guarantor 1 name."],["g1p","Enter guarantor 1 phone."],["g1r","Enter guarantor 1 relationship."],["g1a","Enter guarantor 1 address."],["g2n","Enter guarantor 2 name."],["g2p","Enter guarantor 2 phone."],["g2r","Enter guarantor 2 relationship."],["g2a","Enter guarantor 2 address."]]))return;
+      if(String(V.g1p).replace(/\s/g,"")===String(V.g2p).replace(/\s/g,"")){toast("Use two different guarantors.");return}
+    } else if(s===4){
+      if(!(V.c1&&V.c2&&V.c3)){toast("Agree to all three checks to continue.");return}
+      if(!V.selfie){toast("Take a selfie to continue.");return}
+      d.vet=1;
+    }
+    d.rs=s+1;render();
+  },
+  dMove:function(){if(S.d.vet<6)S.d.vet++;render()},
+  dHomeGo:function(){S.d.screen="home";S.d.req="new";reqStart=0;render()},
+  role:function(v){clearFind();S.role=v;if(v==="client"&&S.screen==="finding")S.screen="welcome";render()},
+  go:function(v){S.screen=v;render()},
+  type:function(v){S.type=v;render()},
+  dest:function(v){S.dest=+v;render()},
+  hours:function(v){S.hours=Math.min(12,Math.max(2,S.hours+ +v));render()},
+  when:function(v){S.when=+v;render()},
+  car:function(v){S.car=+v;render()},
+  task:function(v){S.task=+v;render()},
+  request:function(){startFind()},
+  cancel:function(){clearFind();S.screen="quote";render()},
+  photo:function(v){S.photos[+v]=S.photos[+v]?0:1;render()},
+  handover:function(){S.stage=2;S.tripStart=performance.now();render()},
+  next:function(){
+    if(S.stage===0){S.stage=1}
+    else if(S.stage===1){S.photos=[1,1,1,1,1];S.stage=2;S.tripStart=performance.now()}
+    else {S.screen="receipt";S.alert=0}
+    render();
+  },
+  alert:function(){S.alert=1;render()},
+  clearAlert:function(){S.alert=0;render()},
+  rate:function(v){S.rating=+v;render()},
+  tag:function(v){S.tag[v]=!S.tag[v];render()},
+  tip:function(v){S.tip=+v;render()},
+  done:function(){if(S.acct==="business"&&S.biz){S.trips.unshift({d:"Today",who:whoName(),r:"Lekki Phase 1 to "+PLACES[S.dest].n,t:typeLabel(),a:quote().total+S.tip})}S.screen="welcome";S.stage=0;S.rating=0;S.tip=0;S.tag={};render()},
+  toast:function(v){toast(v)},
+  online:function(){S.d.online=!S.d.online;if(S.d.online)S.d.req="new";reqStart=0;render()},
+  decline:function(){S.d.req="declined";reqStart=0;render()},
+  newreq:function(){S.d.req="new";reqStart=0;render()},
+  accept:function(){var d=S.d;d.screen="trip";d.stage=0;d.pin="";d.pinOk=false;d.bad=0;d.photos=[0,0,0,0,0];S.apStart=performance.now();reqStart=0;render()},
+  dArrive:function(){S.d.stage=1;render()},
+  key:function(v){
+    var d=S.d; if(d.pinOk) return;
+    d.bad=0;
+    if(v==="back") d.pin=d.pin.slice(0,-1);
+    else if(d.pin.length<4) d.pin+=v;
+    if(d.pin.length===4){
+      if(d.pin===PIN){d.pinOk=true;toast("PIN confirmed")}
+      else {d.bad=1;d.pin="";toast("That PIN does not match. Ask the client again.")}
+    }
+    render();
+  },
+  dPhoto:function(v){S.d.photos[+v]=S.d.photos[+v]?0:1;render()},
+  dStart:function(){S.d.stage=2;S.tripStart=performance.now();render()},
+  dEnd:function(){S.d.screen="summary";render()},
+  dRate:function(v){S.d.rating=+v;render()},
+  dDone:function(){var d=S.d;d.screen="home";d.stage=0;d.rating=0;d.req="new";reqStart=0;render()}
+};
+document.addEventListener("click",function(e){
+  var el=e.target.closest("[data-act]"); if(!el||el.disabled) return;
+  var f=A[el.dataset.act]; if(f) f(el.dataset.arg);
+});
+document.addEventListener("input",function(e){var n=e.target&&e.target.name;if(n)V[n]=e.target.value});
+render();
+})();
+</script>
