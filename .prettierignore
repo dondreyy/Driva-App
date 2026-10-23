@@ -1,0 +1,10 @@
+dist
+coverage
+node_modules
+pnpm-lock.yaml
+docs/prototype
+database/schema.sql
+database/migrations
+docs
+CLAUDE.md
+README.md
