@@ -17,6 +17,14 @@ import type {
   VettingResultRequest,
 } from './drivers';
 import type {
+  PlaceSuggestion,
+  Place,
+  QuoteRequest,
+  QuoteView,
+  Vehicle,
+  VehicleRequest,
+} from './booking';
+import type {
   AuthTokens,
   Me,
   OtpRequest,
@@ -84,6 +92,23 @@ export function createApiClient(options: ApiClientOptions) {
     updateMe: (body: UpdateMeRequest) => call<Me>('PATCH', '/me', body, true),
 
     cities: () => call<{ id: string; name: string }[]>('GET', '/cities'),
+
+    // Booking.
+    placeSearch: (q: string, near?: { lat: number; lng: number }) =>
+      call<PlaceSuggestion[]>(
+        'GET',
+        `/places/search?${new URLSearchParams({ q, ...(near ? { lat: String(near.lat), lng: String(near.lng) } : {}) })}`,
+        undefined,
+        true,
+      ),
+    placeDetails: (placeId: string) =>
+      call<Place>('GET', `/places/details/${encodeURIComponent(placeId)}`, undefined, true),
+    reverseGeocode: (at: { lat: number; lng: number }) =>
+      call<Place>('GET', `/places/reverse?lat=${at.lat}&lng=${at.lng}`, undefined, true),
+    createQuote: (body: QuoteRequest) => call<QuoteView>('POST', '/quotes', body, true),
+    getQuote: (id: string) => call<QuoteView>('GET', `/quotes/${id}`, undefined, true),
+    vehicles: () => call<Vehicle[]>('GET', '/vehicles', undefined, true),
+    addVehicle: (body: VehicleRequest) => call<Vehicle>('POST', '/vehicles', body, true),
 
     // Driver app: the signed in driver's own application.
     driverApplication: () => call<DriverApplication>('GET', '/drivers/me', undefined, true),

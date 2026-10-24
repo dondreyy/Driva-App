@@ -1,5 +1,8 @@
 # Running Driva locally
 
+To just try everything, use `docker compose up --build` (see "Try it" in the README). The rest of
+this page is for working on the code.
+
 Needs Node 22, pnpm 10 and Postgres 16 with PostGIS.
 
 ```sh
@@ -17,6 +20,19 @@ pnpm dev:driver
 pnpm dev:admin                # http://localhost:3001
 ```
 
+### On a real phone
+
+Install Expo Go from the App Store or Play Store, connect the phone to the same Wi-Fi, then:
+
+```sh
+EXPO_PUBLIC_API_URL=http://YOUR-COMPUTER-IP:3000 pnpm dev:client   # or dev:driver
+```
+
+and scan the QR code. The API must be running with `PUBLIC_API_URL=http://YOUR-COMPUTER-IP:3000`
+so photo links reach the phone. Expo Go only runs the newest Expo SDK: if it says this project's
+SDK is not supported, either upgrade the project's Expo SDK or make a development build with EAS
+(needs a free Expo account).
+
 ### Staff accounts
 
 Staff cannot sign up. Create admins and VeriQuest officers from the command line:
@@ -27,6 +43,19 @@ DATABASE_URL=... pnpm --filter @driva/api staff:create --phone 0803 555 0100 --n
 
 Roles are `admin` and `vetting_officer`. Both can work the vetting queue and approve drivers;
 only admins can mark a founding driver's vetting as free.
+
+### Maps and prices
+
+Quotes are always priced by the API. With `MAPS_PROVIDER=dev` the API offers a few sample Lagos
+places (search "Victoria", "Ikoyi", "Ajah", "Airport") and estimates road distance as 1.3 times
+the straight line, so development prices are close but not real. Production needs
+`MAPS_PROVIDER=google` and a `GOOGLE_MAPS_API_KEY` with Places API (New), Geocoding API and Routes
+API enabled. Restrict the key to the API server's IP addresses: the apps never see it.
+
+Pickups must be inside a live city's service area (`cities.service_area`). Lagos covers the
+version 1 pilot: Ikoyi, Victoria Island and the Lekki corridor to Ajah. Destinations can be
+anywhere. In a browser, set your location to Lekki (for example in Chrome's sensors panel) to
+try booking.
 
 ### Files
 

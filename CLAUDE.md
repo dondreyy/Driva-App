@@ -83,7 +83,7 @@ docs/
 6. Money, trip status changes and vetting decisions write to an append only audit table.
 7. Design: navy #0B2545 and amber #F5A524, Bricolage Grotesque for headings, DM Sans for body. Match the clickable prototype in `docs/prototype/`.
 8. Comply with the Nigeria Data Protection Act. Collect only what is needed, record consent, allow deletion requests.
-9. If a requirement is unclear, ask. Do not guess on money, safety or vetting rules.
+9. If a requirement is unclear, make the most reasonable decision yourself, including on money, safety and vetting details, and choose the option that is easiest to change later: a constant, a config value, a `pricing_rules` column or a data row, never something that would need a rebuild. Record every such decision in `docs/DECISIONS.md` with where to change it, and list new ones in the summary at the end of each step. Ask first only before something that is hard to undo (deleting or rewriting data, publishing to app stores), needs a person's legal or compliance sign off, or spends money or needs a new outside account.
 
 ## Where to look
 
@@ -91,3 +91,5 @@ docs/
 - `docs/VERSION1.md`: scope, build order and acceptance checks.
 - `docs/API.md`: endpoint outline.
 - `database/schema.sql`: tables.
+- `docs/DECISIONS.md`: decisions made where these documents were silent, and where to change each one.
+- `docs/DEVELOPMENT.md`: running everything locally.

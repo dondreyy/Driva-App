@@ -18,6 +18,7 @@ describe('loadConfig', () => {
       sms: { provider: 'console' },
       dataEncryptionKey: Buffer.alloc(32, 7),
       storage: { provider: 'local', dir: '.storage', publicUrl: 'http://localhost:4000' },
+      maps: { provider: 'dev' },
     });
   });
 
@@ -51,6 +52,7 @@ describe('loadConfig', () => {
       NODE_ENV: 'production',
       TERMII_API_KEY: 'k',
       TERMII_SENDER_ID: 'Driva',
+      GOOGLE_MAPS_API_KEY: 'g',
     };
     expect(() => loadConfig({ ...prod, STORAGE_PROVIDER: 'local' })).toThrow(
       /not allowed in production/,
@@ -65,8 +67,33 @@ describe('loadConfig', () => {
     });
   });
 
+  it('prices with Google in production, never the development maps', () => {
+    const prod = {
+      ...base,
+      NODE_ENV: 'production',
+      S3_BUCKET: 'b',
+      AWS_REGION: 'af-south-1',
+      TERMII_API_KEY: 'k',
+      TERMII_SENDER_ID: 'Driva',
+    };
+    expect(() => loadConfig({ ...prod, MAPS_PROVIDER: 'dev' })).toThrow(
+      /not allowed in production/,
+    );
+    expect(() => loadConfig(prod)).toThrow(/GOOGLE_MAPS_API_KEY/);
+    expect(loadConfig({ ...prod, GOOGLE_MAPS_API_KEY: 'g' }).maps).toEqual({
+      provider: 'google',
+      apiKey: 'g',
+    });
+  });
+
   it('uses Termii in production and needs its key', () => {
-    const prod = { ...base, NODE_ENV: 'production', S3_BUCKET: 'b', AWS_REGION: 'af-south-1' };
+    const prod = {
+      ...base,
+      NODE_ENV: 'production',
+      S3_BUCKET: 'b',
+      AWS_REGION: 'af-south-1',
+      GOOGLE_MAPS_API_KEY: 'g',
+    };
     expect(() => loadConfig(prod)).toThrow(/TERMII_API_KEY/);
     expect(
       loadConfig({

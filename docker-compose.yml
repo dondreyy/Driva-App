@@ -1,0 +1,111 @@
+# Local demo of all of Driva on one computer. Not for production.
+#
+#   docker compose up --build
+#
+# Client app (browser):   http://localhost:8081
+# Driver app (browser):   http://localhost:8082
+# Admin dashboard:        http://localhost:3001
+# API:                    http://localhost:3000/v1/health
+#
+# On a phone on the same Wi-Fi, use this computer's address instead of localhost,
+# for example http://192.168.1.20:8081.
+#
+# Login codes are not texted in the demo. Read them with:
+#   docker compose logs api | grep "code is"
+
+x-demo-secrets: &demo-secrets # Demo only. Real deployments get these from a secrets manager.
+  JWT_SECRET: demo-only-jwt-secret-change-me-0000000000
+  OTP_PEPPER: demo-only-otp-pepper-change-me-000000000
+  DATA_ENCRYPTION_KEY: ZGVtby1vbmx5LWRhdGEta2V5LWNoYW5nZS1tZS0wMDA=
+
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    environment:
+      POSTGRES_USER: driva
+      POSTGRES_PASSWORD: driva
+      POSTGRES_DB: driva
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      # Over TCP: on first start Postgres runs its setup on a local socket only, then restarts.
+      test: ['CMD-SHELL', 'pg_isready -U driva -h 127.0.0.1']
+      interval: 3s
+      retries: 20
+
+  api:
+    build: { context: ., target: api }
+    depends_on:
+      db: { condition: service_healthy }
+    environment:
+      <<: *demo-secrets
+      # development turns on the demo stand-ins below; production refuses them.
+      NODE_ENV: development
+      PORT: 3000
+      DATABASE_URL: postgres://driva:driva@db:5432/driva
+      SMS_PROVIDER: console
+      MAPS_PROVIDER: dev
+      STORAGE_PROVIDER: local
+      STORAGE_LOCAL_DIR: /data/files
+      # Empty: photo links are relative, served through whichever app the browser is using.
+      PUBLIC_API_URL: ''
+    volumes:
+      - files:/data/files
+    ports: ['3000:3000']
+    restart: on-failure
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:3000/v1/health').then(r => process.exit(r.ok ? 0 : 1), () => process.exit(1))",
+        ]
+      interval: 3s
+      retries: 40
+
+  # Creates the demo VeriQuest officer (0803 555 0100) once, so the dashboard has someone to sign in.
+  demo-staff:
+    build: { context: ., target: api }
+    depends_on:
+      api: { condition: service_healthy }
+    environment:
+      DATABASE_URL: postgres://driva:driva@db:5432/driva
+    restart: on-failure
+    # Succeeds when the officer is created or already there; any other error retries.
+    command:
+      - sh
+      - -c
+      - |
+        out=$$(node dist/cli/create-staff.js --phone 0803 555 0100 --name 'Ada Obi' --role vetting_officer 2>&1)
+        echo "$$out"
+        case "$$out" in *Created*|*"already has"*) exit 0 ;; *) exit 1 ;; esac
+
+  admin:
+    build: { context: ., target: admin }
+    depends_on:
+      api: { condition: service_healthy }
+    environment:
+      DRIVA_API_URL: http://api:3000
+    ports: ['3001:3001']
+
+  client-web:
+    build:
+      context: .
+      target: web
+      # Empty: the app calls /v1 on its own address, which nginx passes to the API.
+      args: { APP: client, EXPO_PUBLIC_API_URL: '' }
+    depends_on: [api]
+    ports: ['8081:80']
+
+  driver-web:
+    build:
+      context: .
+      target: web
+      args: { APP: driver, EXPO_PUBLIC_API_URL: '' }
+    depends_on: [api]
+    ports: ['8082:80']
+
+volumes:
+  db-data:
+  files:

@@ -6,8 +6,11 @@ import { ConfigModule } from './config/config.module';
 import { DatabaseModule } from './database/database.module';
 import { DriversModule } from './drivers/drivers.module';
 import { HealthController } from './health/health.controller';
+import { MapsModule } from './maps/maps.module';
+import { QuotesModule } from './quotes/quotes.module';
 import { StorageModule } from './storage/storage.module';
 import { UsersModule } from './users/users.module';
+import { VehiclesController } from './vehicles/vehicles.controller';
 import { VettingModule } from './vetting/vetting.module';
 
 @Module({
@@ -25,8 +28,10 @@ import { VettingModule } from './vetting/vetting.module';
     UsersModule,
     DriversModule,
     VettingModule,
+    MapsModule,
+    QuotesModule,
   ],
-  controllers: [HealthController],
+  controllers: [HealthController, VehiclesController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
 export class AppModule {}
