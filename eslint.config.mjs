@@ -11,6 +11,7 @@ export default tseslint.config(
       '**/node_modules/**',
       '**/.expo/**',
       '**/.next/**',
+      '**/next-env.d.ts',
       '**/web-build/**',
       'docs/prototype/**',
     ],

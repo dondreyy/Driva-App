@@ -10,3 +10,4 @@ coverage/
 .next/
 web-build/
 .storage/
+next-env.d.ts
