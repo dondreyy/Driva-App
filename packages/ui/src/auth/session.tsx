@@ -9,6 +9,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import { io, Socket } from 'socket.io-client';
 import { TokenStorage } from './storage';
 
 type Status = 'loading' | 'signed_out' | 'signed_in';
@@ -20,6 +21,8 @@ interface SessionValue {
   api: ApiClient;
   signIn(result: AuthTokens & { user: Me }): Promise<void>;
   signOut(): Promise<void>;
+  /** The live connection while signed in, for useLiveEvent. */
+  socket: Socket | null;
 }
 
 const SessionContext = createContext<SessionValue | null>(null);
@@ -35,6 +38,7 @@ export function SessionProvider({
 }) {
   const [status, setStatus] = useState<Status>('loading');
   const [user, setUser] = useState<Me | null>(null);
+  const [socket, setSocket] = useState<Socket | null>(null);
   const accessToken = useRef<string | null>(null);
   const refreshing = useRef<Promise<boolean> | null>(null);
 
@@ -110,11 +114,47 @@ export function SessionProvider({
     if (refreshToken) await plain.logout({ refreshToken }).catch(() => undefined);
   }, [plain, storage]);
 
+  // One live connection while signed in. The token is read on every (re)connect, and if the
+  // server drops the socket because the token expired, refresh it and connect again.
+  useEffect(() => {
+    if (status !== 'signed_in') return;
+    const s = io(baseUrl || undefined, {
+      path: '/v1/socket',
+      transports: ['websocket'],
+      auth: (cb) => cb({ token: accessToken.current }),
+    });
+    s.on('disconnect', (reason) => {
+      if (reason === 'io server disconnect') {
+        void refresh().then((ok) => ok && s.connect());
+      }
+    });
+    setSocket(s);
+    return () => {
+      s.close();
+      setSocket(null);
+    };
+  }, [status, baseUrl, refresh]);
+
   const value = useMemo(
-    () => ({ status, user, api, signIn, signOut }),
-    [status, user, api, signIn, signOut],
+    () => ({ status, user, api, signIn, signOut, socket }),
+    [status, user, api, signIn, signOut, socket],
   );
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
+}
+
+/** Runs the handler whenever the server sends this event to the signed in user. */
+export function useLiveEvent<T>(event: string, handler: (payload: T) => void): void {
+  const { socket } = useSession();
+  const latest = useRef(handler);
+  latest.current = handler;
+  useEffect(() => {
+    if (!socket) return;
+    const listener = (payload: T) => latest.current(payload);
+    socket.on(event, listener);
+    return () => {
+      socket.off(event, listener);
+    };
+  }, [socket, event]);
 }
 
 export function useSession(): SessionValue {

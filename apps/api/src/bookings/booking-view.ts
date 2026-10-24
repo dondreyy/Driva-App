@@ -127,7 +127,7 @@ export async function loadBookingView(
       storage_key: string;
       taken_at: Date;
     }>(
-      `SELECT phase, shot, storage_key, taken_at FROM trip_photos WHERE booking_id = $1 ORDER BY phase DESC, shot`,
+      `SELECT phase, shot, storage_key, taken_at FROM trip_photos WHERE booking_id = $1 ORDER BY phase, array_position(ARRAY['front', 'back', 'left', 'right', 'fuel_dash'], shot)`,
       [b.id],
     );
     photos = await Promise.all(

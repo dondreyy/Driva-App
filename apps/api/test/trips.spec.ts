@@ -210,6 +210,10 @@ describeDb('The trip', () => {
 
     const seen = await view(booking.id, client.accessToken);
     expect(seen.photos).toHaveLength(10);
+    // In the order they are taken: front, back, left, right, fuel and dash; handover first.
+    expect(seen.photos.map((p: { phase: string; shot: string }) => `${p.phase}:${p.shot}`)).toEqual(
+      [...SHOTS.map((s) => `before:${s}`), ...SHOTS.map((s) => `after:${s}`)],
+    );
     // Photos open only through their signed links.
     await request(server).get(new URL(seen.photos[0].url).pathname).expect(200);
   });

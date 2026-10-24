@@ -35,6 +35,22 @@ migration or a new `pricing_rules` row, never by editing an old migration.
 | Online drivers' locations are kept in Postgres and the matcher runs every second inside the API, safe on several servers. Both can move to Redis and a queue when the pilot grows. | `driver_presence`, `MatchingWorker` |
 | The apps check for updates every 2 to 3 seconds. Live updates come with trip tracking over WebSocket in Step 6, and push notifications in Step 10. | `OFFER_POLL_MS`, `POLL_MS` |
 
+## The trip (Step 6)
+
+| Decision | Where to change |
+|---|---|
+| The trip PIN is random for each trip, stored encrypted, and shown only to the client until the driver enters it. | `MatchingService.accept`, `loadBookingView` |
+| 5 wrong PINs pause PIN entry for 5 minutes, then the driver can try again. Every try is audited. | `PIN_MAX_ATTEMPTS`, `PIN_LOCK_MINUTES` |
+| Drive my car alone: all five handover photos before the trip can start, all five return photos before it can end. They can be retaken until then. Ride with me takes no photos. | `TripsService` |
+| The fare never changes after acceptance, including when a Ride with me trip runs over its hours. Overtime charges are not in version 1. | `TripsService.end` |
+| Commission is worked out when the trip ends, at the driver's rate on that day, from the price rule the trip was quoted with. | `TripsService.end` |
+| The client's app shows where the driver is from acceptance until the trip ends, and not after. | `LIVE_STATUSES` |
+| Share links: anyone with the link can follow the trip. They show the driver's first name, the car and the location only, last at most 24 hours, and stop 1 hour after the trip ends. | `TripsService.share`, `SHARE_LINK_AFTER_TRIP_HOURS` |
+| The share page shows coordinates and a Google Maps link. A drawn map comes with Google Maps in the apps. | `apps/client/src/TrackPage.tsx` |
+| Live updates use Socket.IO at `/v1/socket`. Each signed in user hears only their own events; apps fetch details over REST and still check every 15 seconds in case the connection drops. One API server for now; more need the Socket.IO Redis adapter. | `EventsGateway`, `EventsService` |
+| The driver app follows the phone's position continuously and sends it every 5 seconds on a trip, every 10 otherwise. | `apps/driver/src/Dashboard.tsx` |
+| A driver cannot cancel an accepted trip in the app; that goes through Driva support (Step 8). | `TripsService` |
+
 ## Cities and maps
 
 | Decision | Where to change |
