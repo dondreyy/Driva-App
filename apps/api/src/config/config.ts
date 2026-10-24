@@ -14,6 +14,7 @@ export interface AppConfig {
   storage:
     | { provider: 'local'; dir: string; publicUrl: string }
     | { provider: 's3'; bucket: string; region: string };
+  maps: { provider: 'dev' } | { provider: 'google'; apiKey: string };
 }
 
 export const APP_CONFIG = Symbol('APP_CONFIG');
@@ -64,6 +65,18 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     throw new Error(`STORAGE_PROVIDER must be local or s3, got ${storageProvider}`);
   }
 
+  const mapsProvider = env.MAPS_PROVIDER ?? (production ? 'google' : 'dev');
+  let maps: AppConfig['maps'];
+  if (mapsProvider === 'dev') {
+    // Sample places and straight line distances. Prices from it are not real, so never in production.
+    if (production) throw new Error('MAPS_PROVIDER=dev is not allowed in production');
+    maps = { provider: 'dev' };
+  } else if (mapsProvider === 'google') {
+    maps = { provider: 'google', apiKey: required(env, 'GOOGLE_MAPS_API_KEY') };
+  } else {
+    throw new Error(`MAPS_PROVIDER must be dev or google, got ${mapsProvider}`);
+  }
+
   const dataEncryptionKey = Buffer.from(required(env, 'DATA_ENCRYPTION_KEY'), 'base64');
   if (dataEncryptionKey.length !== 32) {
     throw new Error(
@@ -80,6 +93,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     sms,
     dataEncryptionKey,
     storage,
+    maps,
   };
 }
 

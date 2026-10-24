@@ -6,7 +6,9 @@ import request from 'supertest';
 import type { App } from 'supertest/types';
 import { Test } from '@nestjs/testing';
 import { AppModule } from '../src/app.module';
+import type { LatLng, Place, PlaceSuggestion } from '@driva/shared';
 import { SMS_SENDER, SmsSender } from '../src/auth/sms/sms-sender';
+import { MAPS_PROVIDER, MapsProvider, Route } from '../src/maps/maps-provider';
 import { configureApp } from '../src/main';
 
 export const databaseUrl = process.env.DATABASE_URL;
@@ -37,10 +39,38 @@ export class FakeSms implements SmsSender {
   }
 }
 
-export async function createTestApp(sms: SmsSender = new FakeSms()): Promise<INestApplication> {
+/** Fixed distances and a few places, so prices in tests do not depend on Google. */
+export class FakeMaps implements MapsProvider {
+  /** Next route distance in metres; null means "no route". */
+  nextDistanceMeters: number | null = 9_000;
+
+  async search(query: string): Promise<PlaceSuggestion[]> {
+    return [{ placeId: 'p1', title: `${query} result`, subtitle: 'Lagos' }];
+  }
+
+  async details(placeId: string): Promise<Place | null> {
+    return placeId === 'p1' ? { label: 'Eko Hotel', lat: 6.4262, lng: 3.4307 } : null;
+  }
+
+  async reverse(at: LatLng): Promise<Place | null> {
+    return { label: 'Admiralty Way', ...at };
+  }
+
+  async route(from: LatLng, to: LatLng): Promise<Route | null> {
+    if (this.nextDistanceMeters === null) return null;
+    return { distanceMeters: this.nextDistanceMeters, durationSeconds: 1200, path: [from, to] };
+  }
+}
+
+export async function createTestApp(
+  sms: SmsSender = new FakeSms(),
+  maps: MapsProvider = new FakeMaps(),
+): Promise<INestApplication> {
   const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
     .overrideProvider(SMS_SENDER)
     .useValue(sms)
+    .overrideProvider(MAPS_PROVIDER)
+    .useValue(maps)
     .compile();
   const app = configureApp(moduleRef.createNestApplication());
   await app.init();
