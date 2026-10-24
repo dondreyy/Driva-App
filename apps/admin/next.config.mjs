@@ -1,5 +1,11 @@
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // A self-contained server for the Docker image; the monorepo root is traced for shared code.
+  output: 'standalone',
+  outputFileTracingRoot: join(dirname(fileURLToPath(import.meta.url)), '../..'),
   reactStrictMode: true,
   poweredByHeader: false,
   // The root ESLint config already checks this app.

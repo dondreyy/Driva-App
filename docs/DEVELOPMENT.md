@@ -1,5 +1,8 @@
 # Running Driva locally
 
+To just try everything, use `docker compose up --build` (see "Try it" in the README). The rest of
+this page is for working on the code.
+
 Needs Node 22, pnpm 10 and Postgres 16 with PostGIS.
 
 ```sh
@@ -16,6 +19,19 @@ pnpm dev:client               # Expo: press i, a or w
 pnpm dev:driver
 pnpm dev:admin                # http://localhost:3001
 ```
+
+### On a real phone
+
+Install Expo Go from the App Store or Play Store, connect the phone to the same Wi-Fi, then:
+
+```sh
+EXPO_PUBLIC_API_URL=http://YOUR-COMPUTER-IP:3000 pnpm dev:client   # or dev:driver
+```
+
+and scan the QR code. The API must be running with `PUBLIC_API_URL=http://YOUR-COMPUTER-IP:3000`
+so photo links reach the phone. Expo Go only runs the newest Expo SDK: if it says this project's
+SDK is not supported, either upgrade the project's Expo SDK or make a development build with EAS
+(needs a free Expo account).
 
 ### Staff accounts
 

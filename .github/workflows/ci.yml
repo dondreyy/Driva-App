@@ -60,3 +60,13 @@ jobs:
         run: |
           pnpm --filter @driva/client exec expo export --platform web --output-dir web-build
           pnpm --filter @driva/driver exec expo export --platform web --output-dir web-build
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Keeps the demo and production images building.
+      - name: Build the API and admin images
+        run: |
+          docker build --target api -t driva-api .
+          docker build --target admin -t driva-admin .
