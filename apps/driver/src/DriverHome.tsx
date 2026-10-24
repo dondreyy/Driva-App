@@ -2,6 +2,7 @@ import { DriverApplication } from '@driva/shared';
 import { Body, Button, FormScreen, Title, useSession, useTheme } from '@driva/ui';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
+import { Dashboard } from './Dashboard';
 import { Registration } from './Registration';
 import { VettingStatus } from './VettingStatus';
 
@@ -54,6 +55,7 @@ export function DriverHome() {
   if (application.status === 'not_started' || application.status === 'applied') {
     return <Registration application={application} onChange={setApplication} />;
   }
+  if (application.status === 'approved') return <Dashboard />;
   return (
     <VettingStatus
       application={application}

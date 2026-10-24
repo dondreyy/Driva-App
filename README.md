@@ -37,6 +37,9 @@ The first build takes several minutes. Then open:
 - **Staff sign in:** the demo VeriQuest officer is 0803 555 0100.
 - **Places:** the demo knows a few sample places. Search "Lekki", "Victoria", "Ikoyi", "Ajah" or "Airport".
 - **Location:** browsers only share location on `localhost` or HTTPS, so on a phone search for the pickup instead.
+- **Try a full trip:** register a driver in the driver app, approve them as the demo officer in the
+  admin dashboard, go online in the driver app, then request a trip in the client app. The
+  driver gets a 30 second request to accept.
 - **Start again:** `docker compose down -v` wipes the demo data.
 
 For development, running the apps on a real phone, and production settings, see `docs/DEVELOPMENT.md`.

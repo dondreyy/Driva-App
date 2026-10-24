@@ -1,5 +1,15 @@
-import { formatNaira, QuoteView, Vehicle } from '@driva/shared';
-import { Body, Button, Card, fontFamily, FormHeader, FormScreen, useTheme } from '@driva/ui';
+import { ApiError, BookingView, formatNaira, QuoteView, Vehicle } from '@driva/shared';
+import {
+  Body,
+  Button,
+  Card,
+  ErrorBanner,
+  fontFamily,
+  FormHeader,
+  FormScreen,
+  useSession,
+  useTheme,
+} from '@driva/ui';
 import { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { whenLabel } from './when';
@@ -9,12 +19,30 @@ export function QuoteScreen({
   quote,
   car,
   onBack,
+  onBooked,
 }: {
   quote: QuoteView;
   car: Vehicle | null;
   onBack: () => void;
+  onBooked: (booking: BookingView) => void;
 }) {
   const { colors } = useTheme();
+  const { api } = useSession();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function request() {
+    if (!car) return;
+    setError(null);
+    setBusy(true);
+    try {
+      onBooked(await api.createBooking({ quoteId: quote.id, vehicleId: car.id }));
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Check your connection and try again.');
+    } finally {
+      setBusy(false);
+    }
+  }
   const solo = quote.tripType === 'drive_alone';
   const [expired, setExpired] = useState(() => Date.parse(quote.expiresAt) <= Date.now());
 
@@ -36,18 +64,15 @@ export function QuoteScreen({
     <FormScreen
       header={<FormHeader onBack={onBack} />}
       footer={
-        <View>
-          <Button
-            title={expired ? 'Price expired: go back to refresh' : 'Request a driver'}
-            onPress={() => undefined}
-            disabled
-          />
-          <Body muted style={{ textAlign: 'center', marginTop: 8, fontSize: 13 }}>
-            Requesting a driver opens in the next update.
-          </Body>
-        </View>
+        <Button
+          title={expired ? 'Price expired: go back to refresh' : 'Request a driver'}
+          onPress={() => void request()}
+          disabled={expired || !car}
+          loading={busy}
+        />
       }
     >
+      <ErrorBanner message={error} />
       <View style={styles.row}>
         <Text style={[styles.tag, { backgroundColor: colors.soft, color: colors.ink }]}>
           {solo ? 'Drive my car alone' : 'Ride with me'}

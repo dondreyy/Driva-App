@@ -17,6 +17,15 @@ import type {
   VettingResultRequest,
 } from './drivers';
 import type {
+  BookingView,
+  CancelBookingRequest,
+  CreateBookingRequest,
+  DriverLocationRequest,
+  DriverOffer,
+  ShiftView,
+  StartShiftRequest,
+} from './matching';
+import type {
   PlaceSuggestion,
   Place,
   QuoteRequest,
@@ -109,6 +118,27 @@ export function createApiClient(options: ApiClientOptions) {
     getQuote: (id: string) => call<QuoteView>('GET', `/quotes/${id}`, undefined, true),
     vehicles: () => call<Vehicle[]>('GET', '/vehicles', undefined, true),
     addVehicle: (body: VehicleRequest) => call<Vehicle>('POST', '/vehicles', body, true),
+    createBooking: (body: CreateBookingRequest) =>
+      call<BookingView>('POST', '/bookings', body, true),
+    currentBooking: () =>
+      call<{ booking: BookingView | null }>('GET', '/bookings/current', undefined, true),
+    getBooking: (id: string) => call<BookingView>('GET', `/bookings/${id}`, undefined, true),
+    cancelBooking: (id: string, body: CancelBookingRequest = {}) =>
+      call<BookingView>('POST', `/bookings/${id}/cancel`, body, true),
+
+    // Driver app: shifts and requests.
+    shift: () => call<ShiftView>('GET', '/drivers/me/shift', undefined, true),
+    shiftSelfieUpload: (body: UploadRequest) =>
+      call<UploadTicket>('POST', '/drivers/me/shift/selfie', body, true),
+    startShift: (body: StartShiftRequest) =>
+      call<ShiftView>('POST', '/drivers/me/shift/start', body, true),
+    endShift: () => call<ShiftView>('POST', '/drivers/me/shift/end', {}, true),
+    sendLocation: (body: DriverLocationRequest) =>
+      call<void>('POST', '/drivers/me/location', body, true),
+    currentOffer: () =>
+      call<{ offer: DriverOffer | null }>('GET', '/drivers/me/offer', undefined, true),
+    acceptOffer: (id: string) => call<BookingView>('POST', `/offers/${id}/accept`, {}, true),
+    declineOffer: (id: string) => call<void>('POST', `/offers/${id}/decline`, {}, true),
 
     // Driver app: the signed in driver's own application.
     driverApplication: () => call<DriverApplication>('GET', '/drivers/me', undefined, true),

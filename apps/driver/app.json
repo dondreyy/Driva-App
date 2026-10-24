@@ -7,8 +7,22 @@
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "backgroundColor": "#0B2545",
-    "ios": { "bundleIdentifier": "ng.driva.driver", "supportsTablet": false },
-    "android": { "package": "ng.driva.driver" },
-    "plugins": ["expo-secure-store", "expo-font"]
+    "ios": {
+      "bundleIdentifier": "ng.driva.driver",
+      "supportsTablet": false
+    },
+    "android": {
+      "package": "ng.driva.driver"
+    },
+    "plugins": [
+      "expo-secure-store",
+      "expo-font",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Driva uses your location while you are online to send you nearby trips."
+        }
+      ]
+    ]
   }
 }

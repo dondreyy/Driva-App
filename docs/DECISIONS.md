@@ -19,6 +19,22 @@ migration or a new `pricing_rules` row, never by editing an old migration.
 | Destination is optional for Ride with me and required for Drive my car alone, with one of four tasks (from the prototype). | `quoteRequestSchema`, `DRIVE_ALONE_TASKS` |
 | A city can have its own price rule; otherwise the shared default applies. The newest rule with `effective_from` in the past wins. | `pricing_rules` rows |
 
+## Matching (Step 5)
+
+| Decision | Where to change |
+|---|---|
+| A request goes to the nearest eligible driver first, one driver at a time, for 30 seconds. | `OFFER_SECONDS`, `MatchingService.dispatch` |
+| Eligible: approved, vetting under 12 months old, online with a location from the last 2 minutes, same city, within 8 km of the pickup (straight line), no trip in progress, no other request open, not already asked about this booking. | `MatchingService.dispatch`, `MATCH_RADIUS_KM`, `LOCATION_STALE_SECONDS` |
+| A trip for now keeps looking for 5 minutes, then becomes "no driver". A scheduled trip starts looking 30 minutes before pickup and keeps looking until the pickup time. | `MATCHING_WINDOW_MINUTES`, `SCHEDULED_MATCHING_LEAD_MINUTES` |
+| The request shows what the driver earns at their own rate today. The rate stored on the trip is fixed when it completes (Step 7). | `MatchingService.currentOffer` |
+| A client has one open trip at a time. Business accounts booking for staff will relax this in Step 9. | `BookingsService.create` |
+| The client can cancel until the driver arrives, free of charge for now. A cancellation fee can come with payments. | `CANCELLABLE` in `BookingsService` |
+| Payment is not yet held when a trip is requested; that arrives with Paystack in Step 7, before matching starts. | `BookingsService.create` |
+| Every shift starts with a selfie. It is stored with the shift but not yet compared with the driver's photo; that needs the identity provider. | `ShiftsService.start` |
+| A driver cannot go offline during a trip. Going offline passes any request on screen to the next driver. | `ShiftsService.end` |
+| Online drivers' locations are kept in Postgres and the matcher runs every second inside the API, safe on several servers. Both can move to Redis and a queue when the pilot grows. | `driver_presence`, `MatchingWorker` |
+| The apps check for updates every 2 to 3 seconds. Live updates come with trip tracking over WebSocket in Step 6, and push notifications in Step 10. | `OFFER_POLL_MS`, `POLL_MS` |
+
 ## Cities and maps
 
 | Decision | Where to change |

@@ -15,6 +15,8 @@ export interface AppConfig {
     | { provider: 'local'; dir: string; publicUrl: string }
     | { provider: 's3'; bucket: string; region: string };
   maps: { provider: 'dev' } | { provider: 'google'; apiKey: string };
+  /** Runs the matching sweep every second. Tests turn it off and run the sweep themselves. */
+  matchingWorker: boolean;
 }
 
 export const APP_CONFIG = Symbol('APP_CONFIG');
@@ -94,6 +96,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     dataEncryptionKey,
     storage,
     maps,
+    matchingWorker: env.MATCHING_WORKER !== 'off',
   };
 }
 
