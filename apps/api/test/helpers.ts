@@ -135,7 +135,9 @@ export function testPhone(): string {
 export async function clearTestUsers(pool: Pool): Promise<void> {
   const testUsers = `SELECT id FROM users WHERE phone LIKE '+2349000%'`;
   // Bookings first (their offers go with them), then drivers, whose vetting checks point at test officers.
-  await pool.query(`DELETE FROM bookings WHERE client_id IN (${testUsers}) OR driver_id IN (${testUsers})`);
+  await pool.query(
+    `DELETE FROM bookings WHERE client_id IN (${testUsers}) OR driver_id IN (${testUsers})`,
+  );
   await pool.query(
     `DELETE FROM drivers WHERE user_id IN (SELECT id FROM users WHERE phone LIKE '+2349000%')`,
   );

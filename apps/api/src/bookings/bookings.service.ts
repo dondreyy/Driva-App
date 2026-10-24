@@ -101,6 +101,16 @@ export class BookingsService {
     return this.get(client, bookingId);
   }
 
+  /** The client's trip that is still open, so the app can pick up where it left off. */
+  async current(client: AuthUser): Promise<BookingView | null> {
+    const { rows } = await this.pool.query<{ id: string }>(
+      `SELECT id FROM bookings WHERE client_id = $1 AND status = ANY($2::booking_status[])
+       ORDER BY created_at DESC LIMIT 1`,
+      [client.id, ACTIVE],
+    );
+    return rows[0] ? this.get(client, rows[0].id) : null;
+  }
+
   async get(viewer: AuthUser, bookingId: string): Promise<BookingView> {
     const view = await loadBookingView(this.pool, this.storage, bookingId, viewer);
     if (!view) throw new NotFoundException('Booking not found');

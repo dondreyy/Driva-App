@@ -144,13 +144,15 @@ export class MatchingService {
       total_fare_kobo: string;
       approved_at: Date;
       metres_to_pickup: number;
+      seconds_left: number;
     }>(
       `SELECT o.id, o.booking_id, o.expires_at, b.trip_type, b.pickup_label,
               ST_Y(b.pickup::geometry) AS pickup_lat, ST_X(b.pickup::geometry) AS pickup_lng,
               b.destination_label, ST_Y(b.destination::geometry) AS destination_lat,
               ST_X(b.destination::geometry) AS destination_lng, b.hours, b.task, b.distance_km,
               b.scheduled_for, b.is_night, b.total_fare_kobo, d.approved_at,
-              coalesce(ST_Distance(p.location, b.pickup), 0) AS metres_to_pickup
+              coalesce(ST_Distance(p.location, b.pickup), 0) AS metres_to_pickup,
+              ceil(extract(epoch FROM o.expires_at - now()))::int AS seconds_left
        FROM booking_offers o
        JOIN bookings b ON b.id = o.booking_id
        JOIN drivers d ON d.user_id = o.driver_id
@@ -168,6 +170,7 @@ export class MatchingService {
       id: o.id,
       bookingId: o.booking_id,
       expiresAt: o.expires_at.toISOString(),
+      secondsLeft: o.seconds_left,
       tripType: o.trip_type,
       pickup: { label: o.pickup_label, lat: o.pickup_lat, lng: o.pickup_lng },
       destination:

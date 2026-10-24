@@ -120,6 +120,8 @@ export function createApiClient(options: ApiClientOptions) {
     addVehicle: (body: VehicleRequest) => call<Vehicle>('POST', '/vehicles', body, true),
     createBooking: (body: CreateBookingRequest) =>
       call<BookingView>('POST', '/bookings', body, true),
+    currentBooking: () =>
+      call<{ booking: BookingView | null }>('GET', '/bookings/current', undefined, true),
     getBooking: (id: string) => call<BookingView>('GET', `/bookings/${id}`, undefined, true),
     cancelBooking: (id: string, body: CancelBookingRequest = {}) =>
       call<BookingView>('POST', `/bookings/${id}/cancel`, body, true),

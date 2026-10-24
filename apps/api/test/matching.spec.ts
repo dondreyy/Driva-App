@@ -191,9 +191,8 @@ describeDb('Matching', () => {
         driverEarningKobo: booking.totalFareKobo - Math.round(booking.totalFareKobo * 0.15),
       });
       expect(offer.kmToPickup).toBeCloseTo(1, 0);
-      const secondsLeft = (Date.parse(offer.expiresAt) - Date.now()) / 1000;
-      expect(secondsLeft).toBeGreaterThan(25);
-      expect(secondsLeft).toBeLessThanOrEqual(30);
+      expect(offer.secondsLeft).toBeGreaterThan(25);
+      expect(offer.secondsLeft).toBeLessThanOrEqual(30);
     });
 
     it('shows a driver past their first year the 20% rate', async () => {
@@ -400,6 +399,11 @@ describeDb('Matching', () => {
       const client = await clientWithCar();
       const booking = await book(client);
       const offer = await offerFor(d.accessToken);
+      const current = await request(server)
+        .get('/v1/bookings/current')
+        .set(as(client.accessToken))
+        .expect(200);
+      expect(current.body.booking.id).toBe(booking.id);
       const res = await request(server)
         .post(`/v1/bookings/${booking.id}/cancel`)
         .set(as(client.accessToken))
@@ -416,6 +420,11 @@ describeDb('Matching', () => {
         .set(as(client.accessToken))
         .send({})
         .expect(409);
+      const after = await request(server)
+        .get('/v1/bookings/current')
+        .set(as(client.accessToken))
+        .expect(200);
+      expect(after.body.booking).toBeNull();
     });
 
     it('books a quote once, only before it expires, only with the client’s own car, one trip at a time', async () => {

@@ -19,6 +19,12 @@ export class BookingsController {
     return this.bookings.create(user, body.quoteId, body.vehicleId);
   }
 
+  @Get('current')
+  @Roles('client')
+  async current(@CurrentUser() user: AuthUser): Promise<{ booking: BookingView | null }> {
+    return { booking: await this.bookings.current(user) };
+  }
+
   /** The client who booked or the driver who accepted. Anyone else gets 404. */
   @Get(':id')
   @Roles('client', 'driver')

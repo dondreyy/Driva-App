@@ -82,6 +82,8 @@ export interface DriverOffer {
   id: string;
   bookingId: string;
   expiresAt: string;
+  /** From the server's clock, so a phone with the wrong time still counts down correctly. */
+  secondsLeft: number;
   tripType: TripType;
   pickup: Place;
   destination: Place | null;
