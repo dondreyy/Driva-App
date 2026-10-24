@@ -125,6 +125,109 @@ export class Flows {
   }
 }
 
+const JPEG = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0, 0x10, 0x4a, 0x46, 0x49, 0x46]);
+export const PICKUP = { lat: 6.4478, lng: 3.4723, label: 'Lekki Phase 1' };
+/** About 1 km east of the pickup. */
+export const NEAR_PICKUP = { lat: 6.4478, lng: 3.4813 };
+
+const bearer = (token: string) => ({ Authorization: `Bearer ${token}` });
+
+/** Uploads a small JPEG through a signed upload link and returns its key. */
+export async function putPhoto(server: App, ticket: { url: string; key: string }): Promise<string> {
+  await request(server)
+    .put(new URL(ticket.url).pathname)
+    .set('Content-Type', 'image/jpeg')
+    .send(JPEG)
+    .expect(200);
+  return ticket.key;
+}
+
+/** Shortcuts to a trip in progress, through the real API. */
+export class TripFlows {
+  constructor(
+    private readonly server: App,
+    private readonly pool: Pool,
+    private readonly flows: Flows,
+  ) {}
+
+  /** A driver VeriQuest has approved, created directly so tests stay quick. */
+  async approvedDriver(name = 'Emeka Okafor', approvedAgo = '0 days') {
+    const d = await this.flows.signUp(testPhone(), 'driver', name);
+    await this.pool.query(
+      `INSERT INTO drivers (user_id, city_id, status, approved_at, last_full_vetting_at)
+       SELECT $1, id, 'approved', now() - $2::interval, now() FROM cities WHERE name = 'Lagos'`,
+      [d.user.id, approvedAgo],
+    );
+    const ticket = await request(this.server)
+      .post('/v1/drivers/me/shift/selfie')
+      .set(bearer(d.accessToken))
+      .send({ contentType: 'image/jpeg' })
+      .expect(200);
+    await request(this.server)
+      .post('/v1/drivers/me/shift/start')
+      .set(bearer(d.accessToken))
+      .send({ selfieKey: await putPhoto(this.server, ticket.body), ...NEAR_PICKUP })
+      .expect(200);
+    return d;
+  }
+
+  async clientWithCar() {
+    const c = await this.flows.signUp(testPhone(), 'client', 'Tolu Adebayo');
+    const car = await request(this.server)
+      .post('/v1/vehicles')
+      .set(bearer(c.accessToken))
+      .send({
+        makeModel: 'Toyota Camry 2018',
+        plateNumber: 'LND 482 KJ',
+        transmission: 'automatic',
+      })
+      .expect(201);
+    return { ...c, carId: car.body.id as string };
+  }
+
+  /** Books a trip and has the driver accept it. Returns the booking as the client sees it. */
+  async accepted(
+    client: { accessToken: string; carId: string },
+    driver: { accessToken: string },
+    trip: object = { tripType: 'ride_with_me', hours: 2 },
+  ) {
+    const quote = await request(this.server)
+      .post('/v1/quotes')
+      .set(bearer(client.accessToken))
+      .send({ pickup: PICKUP, ...trip })
+      .expect(201);
+    const booking = await request(this.server)
+      .post('/v1/bookings')
+      .set(bearer(client.accessToken))
+      .send({ quoteId: quote.body.id, vehicleId: client.carId })
+      .expect(201);
+    const offer = await request(this.server)
+      .get('/v1/drivers/me/offer')
+      .set(bearer(driver.accessToken))
+      .expect(200);
+    await request(this.server)
+      .post(`/v1/offers/${offer.body.offer.id}/accept`)
+      .set(bearer(driver.accessToken))
+      .expect(200);
+    return (
+      await request(this.server)
+        .get(`/v1/bookings/${booking.body.id}`)
+        .set(bearer(client.accessToken))
+        .expect(200)
+    ).body;
+  }
+}
+
+/** Clears everyone online and every open trip, so each test starts fresh. */
+export async function resetTrips(pool: Pool): Promise<void> {
+  await pool.query(`DELETE FROM driver_presence`);
+  await pool.query(`UPDATE driver_shifts SET ended_at = now() WHERE ended_at IS NULL`);
+  await pool.query(`UPDATE booking_offers SET status = 'expired' WHERE status = 'offered'`);
+  await pool.query(
+    `UPDATE bookings SET status = 'cancelled' WHERE status IN ('requested', 'matching', 'accepted', 'driver_arrived', 'in_progress')`,
+  );
+}
+
 let phoneSeq = 0;
 /** Numbers in the +2349000 range belong to tests and are deleted at the start of a run. */
 export function testPhone(): string {

@@ -39,7 +39,8 @@ The first build takes several minutes. Then open:
 - **Location:** browsers only share location on `localhost` or HTTPS, so on a phone search for the pickup instead.
 - **Try a full trip:** register a driver in the driver app, approve them as the demo officer in the
   admin dashboard, go online in the driver app, then request a trip in the client app. The
-  driver gets a 30 second request to accept.
+  driver gets a 30 second request to accept, then arrives, enters the PIN the client sees, starts
+  and ends the trip. "Share trip" gives a live tracking link anyone can open.
 - **Start again:** `docker compose down -v` wipes the demo data.
 
 For development, running the apps on a real phone, and production settings, see `docs/DEVELOPMENT.md`.

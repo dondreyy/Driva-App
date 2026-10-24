@@ -25,6 +25,7 @@ import type {
   ShiftView,
   StartShiftRequest,
 } from './matching';
+import type { TrackView, TripPhotoRequest, TripPhotoUploadRequest } from './trip';
 import type {
   PlaceSuggestion,
   Place,
@@ -139,6 +140,20 @@ export function createApiClient(options: ApiClientOptions) {
       call<{ offer: DriverOffer | null }>('GET', '/drivers/me/offer', undefined, true),
     acceptOffer: (id: string) => call<BookingView>('POST', `/offers/${id}/accept`, {}, true),
     declineOffer: (id: string) => call<void>('POST', `/offers/${id}/decline`, {}, true),
+
+    // The trip.
+    arrived: (id: string) => call<BookingView>('POST', `/trips/${id}/arrived`, {}, true),
+    checkPin: (id: string, pin: string) =>
+      call<BookingView>('POST', `/trips/${id}/pin`, { pin }, true),
+    tripPhotoUpload: (id: string, body: TripPhotoUploadRequest) =>
+      call<UploadTicket>('POST', `/trips/${id}/photos/upload`, body, true),
+    saveTripPhoto: (id: string, body: TripPhotoRequest) =>
+      call<BookingView>('PUT', `/trips/${id}/photos`, body, true),
+    startTrip: (id: string) => call<BookingView>('POST', `/trips/${id}/start`, {}, true),
+    endTrip: (id: string) => call<BookingView>('POST', `/trips/${id}/end`, {}, true),
+    shareTrip: (id: string) =>
+      call<{ url: string; expiresAt: string | null }>('POST', `/trips/${id}/share`, {}, true),
+    track: (token: string) => call<TrackView>('GET', `/track/${encodeURIComponent(token)}`),
 
     // Driver app: the signed in driver's own application.
     driverApplication: () => call<DriverApplication>('GET', '/drivers/me', undefined, true),

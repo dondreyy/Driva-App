@@ -53,6 +53,6 @@ RUN pnpm --filter @driva/${APP} exec expo export --platform web --output-dir /we
 
 FROM nginx:1.27-alpine AS web
 COPY --from=web-build /web /usr/share/nginx/html
-# Serves the app and passes /v1 to the API, so the app works from any address (a phone on the
+# Serves the app and passes /v1 (and the live socket) to the API, so the app works from any address (a phone on the
 # same Wi-Fi, for example) without knowing where the API is.
-RUN printf 'server {\n  listen 80;\n  root /usr/share/nginx/html;\n  client_max_body_size 12m;\n  location /v1/ { proxy_pass http://api:3000; proxy_set_header Host $host; }\n  location / { try_files $uri /index.html; }\n}\n' > /etc/nginx/conf.d/default.conf
+RUN printf 'server {\n  listen 80;\n  root /usr/share/nginx/html;\n  client_max_body_size 12m;\n  location /v1/socket/ { proxy_pass http://api:3000; proxy_http_version 1.1; proxy_set_header Upgrade $http_upgrade; proxy_set_header Connection upgrade; }\n  location /v1/ { proxy_pass http://api:3000; proxy_set_header Host $host; }\n  location / { try_files $uri /index.html; }\n}\n' > /etc/nginx/conf.d/default.conf

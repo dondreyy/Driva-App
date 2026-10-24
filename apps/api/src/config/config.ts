@@ -17,6 +17,10 @@ export interface AppConfig {
   maps: { provider: 'dev' } | { provider: 'google'; apiKey: string };
   /** Runs the matching sweep every second. Tests turn it off and run the sweep themselves. */
   matchingWorker: boolean;
+  /** Where the client web app lives, for trip share links. */
+  publicWebUrl: string;
+  /** Browser origins allowed to call the API and open a socket (local web builds). */
+  corsOrigins: string[];
 }
 
 export const APP_CONFIG = Symbol('APP_CONFIG');
@@ -97,6 +101,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     storage,
     maps,
     matchingWorker: env.MATCHING_WORKER !== 'off',
+    publicWebUrl: (env.PUBLIC_WEB_URL ?? 'http://localhost:8081').replace(/\/$/, ''),
+    corsOrigins: env.CORS_ORIGINS ? env.CORS_ORIGINS.split(',') : [],
   };
 }
 

@@ -4,6 +4,8 @@ import {
   DriverOffer,
   formatNaira,
   LOCATION_INTERVAL_SECONDS,
+  SOCKET_EVENTS,
+  TRIP_LOCATION_INTERVAL_SECONDS,
   ShiftView,
 } from '@driva/shared';
 import {
@@ -13,6 +15,7 @@ import {
   ErrorBanner,
   fontFamily,
   LinkButton,
+  useLiveEvent,
   useSession,
   useTheme,
 } from '@driva/ui';
@@ -21,20 +24,27 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { takePhoto, uploadPhoto } from './photos';
+import { TripFlow } from './TripFlow';
 
-const OFFER_POLL_MS = 2000;
+/** Fallback only: requests normally arrive live. */
+const OFFER_POLL_MS = 5000;
 
-async function currentPosition() {
-  const permission = await Location.requestForegroundPermissionsAsync();
-  if (!permission.granted)
-    throw new Error('Allow location access so Driva can send you nearby trips.');
-  const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+type Position = { lat: number; lng: number; heading?: number };
+
+function toPosition(pos: Location.LocationObject): Position {
   const heading = pos.coords.heading;
   return {
     lat: pos.coords.latitude,
     lng: pos.coords.longitude,
     ...(heading != null && heading >= 0 ? { heading: Math.round(heading) % 360 } : {}),
   };
+}
+
+async function currentPosition(): Promise<Position> {
+  const permission = await Location.requestForegroundPermissionsAsync();
+  if (!permission.granted)
+    throw new Error('Allow location access so Driva can send you nearby trips.');
+  return toPosition(await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High }));
 }
 
 /** The approved driver's home: go online, receive a request, accept or decline it. */
@@ -62,36 +72,71 @@ export function Dashboard() {
 
   const online = !!shift?.online;
 
-  // While online: send the location every few seconds, and check for a request.
+  const onTrip = !!trip && ['accepted', 'driver_arrived', 'in_progress'].includes(trip.status);
+
+  // While online, follow the phone's position (GPS stays warm instead of starting each time).
+  const latest = useRef<Position | null>(null);
+  useEffect(() => {
+    if (!online) return;
+    let sub: Location.LocationSubscription | null = null;
+    let stopped = false;
+    void Location.watchPositionAsync(
+      { accuracy: Location.Accuracy.High, timeInterval: 5000, distanceInterval: 10 },
+      (pos) => (latest.current = toPosition(pos)),
+    ).then((s) => (stopped ? s.remove() : (sub = s)));
+    return () => {
+      stopped = true;
+      sub?.remove();
+    };
+  }, [online]);
+
+  // Send the latest position: every 5 seconds on a trip and every 10 otherwise.
+  useEffect(() => {
+    if (!online) return;
+    const every = onTrip ? TRIP_LOCATION_INTERVAL_SECONDS : LOCATION_INTERVAL_SECONDS;
+    const timer = setInterval(() => {
+      if (latest.current) api.sendLocation(latest.current).catch(() => undefined);
+    }, every * 1000);
+    return () => clearInterval(timer);
+  }, [online, onTrip, api]);
+
+  const checkOffer = useCallback(() => {
+    api
+      .currentOffer()
+      .then(({ offer: next }) => {
+        setOffer((prev) => {
+          if (prev && !next && !answered.current) setNotice('That request went to another driver.');
+          if (next && next.id !== prev?.id) {
+            answered.current = false;
+            setNotice(null);
+            setSecondsLeft(next.secondsLeft);
+          }
+          return next;
+        });
+      })
+      .catch(() => undefined);
+  }, [api]);
+
+  // A new request arrives live; the slower check covers a dropped connection and shows when
+  // a request has gone to someone else.
+  useLiveEvent(SOCKET_EVENTS.offer, () => {
+    if (online && !trip) checkOffer();
+  });
   useEffect(() => {
     if (!online || trip) return;
-    const sendLocation = setInterval(() => {
-      currentPosition()
-        .then((at) => api.sendLocation(at))
-        .catch(() => undefined);
-    }, LOCATION_INTERVAL_SECONDS * 1000);
-    const poll = setInterval(() => {
+    const poll = setInterval(checkOffer, OFFER_POLL_MS);
+    return () => clearInterval(poll);
+  }, [online, trip, checkOffer]);
+
+  // The client cancelled, or anything else changed on the trip.
+  useLiveEvent<{ bookingId: string }>(SOCKET_EVENTS.booking, (e) => {
+    if (trip && e.bookingId === trip.id) {
       api
-        .currentOffer()
-        .then(({ offer: next }) => {
-          setOffer((prev) => {
-            if (prev && !next && !answered.current)
-              setNotice('That request went to another driver.');
-            if (next && next.id !== prev?.id) {
-              answered.current = false;
-              setNotice(null);
-              setSecondsLeft(next.secondsLeft);
-            }
-            return next;
-          });
-        })
+        .getBooking(trip.id)
+        .then(setTrip)
         .catch(() => undefined);
-    }, OFFER_POLL_MS);
-    return () => {
-      clearInterval(sendLocation);
-      clearInterval(poll);
-    };
-  }, [online, trip, api]);
+    }
+  });
 
   // Countdown from the server's seconds, ticking on this phone.
   useEffect(() => {
@@ -177,7 +222,15 @@ export function Dashboard() {
       <ScrollView contentContainerStyle={styles.body}>
         <ErrorBanner message={error} />
         {trip ? (
-          <AcceptedTrip trip={trip} />
+          <TripFlow
+            trip={trip}
+            onChange={setTrip}
+            onFinished={() => {
+              setTrip(null);
+              setNotice(null);
+              void load();
+            }}
+          />
         ) : offer ? (
           <RequestCard
             offer={offer}
@@ -300,42 +353,6 @@ function RequestCard({
         </View>
       </View>
     </Card>
-  );
-}
-
-function AcceptedTrip({ trip }: { trip: BookingView }) {
-  const { colors } = useTheme();
-  return (
-    <View>
-      <Text style={[styles.h2, { color: colors.ink, marginBottom: 6 }]}>Trip accepted</Text>
-      <Body muted style={{ marginBottom: 14 }}>
-        Head to the pickup. Arriving, the PIN and the trip itself come in the next update.
-      </Body>
-      <Card>
-        <View style={styles.row}>
-          <Body muted>Client</Body>
-          <Body>{trip.clientFirstName}</Body>
-        </View>
-        <View style={styles.row}>
-          <Body muted>Pickup</Body>
-          <Body>{trip.pickup.label}</Body>
-        </View>
-        {trip.destination ? (
-          <View style={styles.row}>
-            <Body muted>Destination</Body>
-            <Body>{trip.destination.label}</Body>
-          </View>
-        ) : null}
-        <View style={styles.row}>
-          <Body muted>Car</Body>
-          <Body>{`${trip.vehicle.makeModel} · ${trip.vehicle.plateNumber}`}</Body>
-        </View>
-        <View style={styles.row}>
-          <Body muted>Fare, locked</Body>
-          <Body>{formatNaira(trip.totalFareKobo)}</Body>
-        </View>
-      </Card>
-    </View>
   );
 }
 

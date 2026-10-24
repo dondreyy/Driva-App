@@ -11,15 +11,31 @@ import {
 } from '@driva/ui';
 import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, Platform, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Booking } from './src/Booking';
+import { TrackPage } from './src/TrackPage';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
 const storage = deviceTokenStorage('driva.refreshToken');
 
+/** On the web, /track/<token> is the public page behind a share link. */
+const trackToken =
+  Platform.OS === 'web'
+    ? (globalThis as { location?: Location }).location?.pathname.match(/^\/track\/([\w-]+)$/)?.[1]
+    : undefined;
+
 export default function App() {
   const fontsReady = useDrivaFonts();
+  if (trackToken) {
+    return (
+      <SafeAreaProvider>
+        <ThemeProvider>
+          {fontsReady ? <TrackPage apiUrl={API_URL} token={trackToken} /> : <Loading />}
+        </ThemeProvider>
+      </SafeAreaProvider>
+    );
+  }
   return (
     <SafeAreaProvider>
       <ThemeProvider>

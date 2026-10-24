@@ -49,6 +49,8 @@ services:
       STORAGE_LOCAL_DIR: /data/files
       # Empty: photo links are relative, served through whichever app the browser is using.
       PUBLIC_API_URL: ''
+      # Trip share links point at the client web app.
+      PUBLIC_WEB_URL: http://localhost:8081
     volumes:
       - files:/data/files
     ports: ['3000:3000']
