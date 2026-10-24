@@ -7,6 +7,7 @@ import { DatabaseModule } from './database/database.module';
 import { DriversModule } from './drivers/drivers.module';
 import { HealthController } from './health/health.controller';
 import { MapsModule } from './maps/maps.module';
+import { MatchingModule } from './matching/matching.module';
 import { QuotesModule } from './quotes/quotes.module';
 import { StorageModule } from './storage/storage.module';
 import { UsersModule } from './users/users.module';
@@ -30,6 +31,7 @@ import { VettingModule } from './vetting/vetting.module';
     VettingModule,
     MapsModule,
     QuotesModule,
+    MatchingModule,
   ],
   controllers: [HealthController, VehiclesController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],

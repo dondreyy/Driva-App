@@ -3,6 +3,7 @@ export * from './auth';
 export * from './booking';
 export * from './constants';
 export * from './drivers';
+export * from './matching';
 export * from './money';
 export * from './phone';
 export * from './pricing';

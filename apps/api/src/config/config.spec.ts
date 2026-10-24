@@ -19,6 +19,7 @@ describe('loadConfig', () => {
       dataEncryptionKey: Buffer.alloc(32, 7),
       storage: { provider: 'local', dir: '.storage', publicUrl: 'http://localhost:4000' },
       maps: { provider: 'dev' },
+      matchingWorker: true,
     });
   });
 

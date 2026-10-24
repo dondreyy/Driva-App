@@ -22,6 +22,8 @@ process.env.JWT_SECRET ??= 'test-jwt-secret-that-is-at-least-32-chars';
 process.env.OTP_PEPPER ??= 'test-otp-pepper-that-is-at-least-32-chars';
 process.env.DATA_ENCRYPTION_KEY ??= Buffer.alloc(32, 9).toString('base64');
 process.env.STORAGE_LOCAL_DIR ??= join(tmpdir(), 'driva-test-storage');
+// Tests run the matching sweep themselves, so timing is under their control.
+process.env.MATCHING_WORKER ??= 'off';
 
 /** Captures texts instead of sending them, so tests can read the login code. */
 export class FakeSms implements SmsSender {
@@ -131,7 +133,9 @@ export function testPhone(): string {
 }
 
 export async function clearTestUsers(pool: Pool): Promise<void> {
-  // Drivers first: their vetting checks point at test officers.
+  const testUsers = `SELECT id FROM users WHERE phone LIKE '+2349000%'`;
+  // Bookings first (their offers go with them), then drivers, whose vetting checks point at test officers.
+  await pool.query(`DELETE FROM bookings WHERE client_id IN (${testUsers}) OR driver_id IN (${testUsers})`);
   await pool.query(
     `DELETE FROM drivers WHERE user_id IN (SELECT id FROM users WHERE phone LIKE '+2349000%')`,
   );
