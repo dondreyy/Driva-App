@@ -8,3 +8,5 @@ database/migrations
 docs
 CLAUDE.md
 README.md
+.expo
+web-build

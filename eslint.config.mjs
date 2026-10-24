@@ -5,7 +5,14 @@ import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
   {
-    ignores: ['**/dist/**', '**/coverage/**', '**/node_modules/**', 'docs/prototype/**'],
+    ignores: [
+      '**/dist/**',
+      '**/coverage/**',
+      '**/node_modules/**',
+      '**/.expo/**',
+      '**/web-build/**',
+      'docs/prototype/**',
+    ],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,
@@ -18,6 +25,12 @@ export default tseslint.config(
       // Personal data must never reach logs (CLAUDE.md rule 4). Use the masking helpers.
       'no-console': 'error',
     },
+  },
+  {
+    // Tool config files (Metro, Jest) are CommonJS.
+    files: ['**/*.config.js'],
+    languageOptions: { sourceType: 'commonjs' },
+    rules: { '@typescript-eslint/no-require-imports': 'off' },
   },
   prettier,
 );

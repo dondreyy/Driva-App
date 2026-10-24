@@ -42,3 +42,19 @@ jobs:
       - name: Migrate up, down and up again
         run: pnpm db:migrate && pnpm db:rollback && pnpm db:migrate
       - run: pnpm test
+
+  apps:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # Bundling with Metro catches import and monorepo resolution problems that tsc misses.
+      - name: Bundle the client and driver apps
+        run: |
+          pnpm --filter @driva/client exec expo export --platform web --output-dir web-build
+          pnpm --filter @driva/driver exec expo export --platform web --output-dir web-build

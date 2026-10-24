@@ -5,7 +5,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "start": "node dist/main.js",
-    "dev": "ts-node-dev --respawn --transpile-only src/main.ts",
+    "dev": "ts-node-dev --respawn --transpile-only -r dotenv/config src/main.ts dotenv_config_path=../../.env",
     "typecheck": "tsc --noEmit",
     "test": "jest",
     "db:migrate": "node-pg-migrate up -m ../../database/migrations --check-order",
@@ -30,6 +30,7 @@
     "@types/node": "^22.19.1",
     "@types/pg": "^8.15.6",
     "@types/supertest": "^6.0.3",
+    "dotenv": "^16.6.1",
     "jest": "^29.7.0",
     "node-pg-migrate": "^8.0.3",
     "supertest": "^7.1.4",

@@ -10,10 +10,13 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "typecheck": "pnpm -r --if-present typecheck",
+    "typecheck": "pnpm --filter @driva/shared build && pnpm -r --if-present typecheck",
     "test": "pnpm -r --if-present test",
     "db:migrate": "pnpm --filter @driva/api db:migrate",
-    "db:rollback": "pnpm --filter @driva/api db:rollback"
+    "db:rollback": "pnpm --filter @driva/api db:rollback",
+    "dev:api": "pnpm --filter @driva/shared build && pnpm --filter @driva/api dev",
+    "dev:client": "pnpm --filter @driva/client start",
+    "dev:driver": "pnpm --filter @driva/driver start"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
