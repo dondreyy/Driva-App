@@ -1,7 +1,9 @@
 import { Controller, Get, Inject, Logger, ServiceUnavailableException } from '@nestjs/common';
+import { Public } from '../auth/decorators';
 import { Pool } from 'pg';
 import { PG_POOL } from '../database/database.module';
 
+@Public()
 @Controller('health')
 export class HealthController {
   private readonly logger = new Logger(HealthController.name);

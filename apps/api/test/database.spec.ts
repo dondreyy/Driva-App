@@ -3,25 +3,15 @@
  * CI sets REQUIRE_DATABASE=1 so these tests can never be skipped there.
  */
 import { INestApplication } from '@nestjs/common';
-import { Test } from '@nestjs/testing';
 import { Pool, PoolClient } from 'pg';
 import request from 'supertest';
-import { AppModule } from '../src/app.module';
-import { configureApp } from '../src/main';
-
-const databaseUrl = process.env.DATABASE_URL;
-if (!databaseUrl && process.env.REQUIRE_DATABASE) {
-  throw new Error('REQUIRE_DATABASE is set but DATABASE_URL is not');
-}
-const describeDb = databaseUrl ? describe : describe.skip;
+import { createTestApp, databaseUrl, describeDb } from './helpers';
 
 describeDb('API against Postgres', () => {
   let app: INestApplication;
 
   beforeAll(async () => {
-    const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
-    app = configureApp(moduleRef.createNestApplication());
-    await app.init();
+    app = await createTestApp();
   });
 
   afterAll(async () => {

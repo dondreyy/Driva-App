@@ -7,6 +7,8 @@ import { loadConfig } from './config/config';
 export function configureApp(app: INestApplication): INestApplication {
   app.setGlobalPrefix('v1');
   app.enableShutdownHooks();
+  // The mobile apps are native and do not need CORS. Web builds are for local testing only.
+  app.enableCors({ origin: process.env.CORS_ORIGINS?.split(',') ?? false });
   return app;
 }
 
