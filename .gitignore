@@ -9,3 +9,4 @@ coverage/
 .expo/
 .next/
 web-build/
+.storage/

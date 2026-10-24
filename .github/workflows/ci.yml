@@ -53,6 +53,8 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Build the admin dashboard
+        run: pnpm --filter @driva/shared build && pnpm --filter @driva/admin build
       # Bundling with Metro catches import and monorepo resolution problems that tsc misses.
       - name: Bundle the client and driver apps
         run: |

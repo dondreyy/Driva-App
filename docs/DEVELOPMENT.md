@@ -14,7 +14,26 @@ DATABASE_URL=postgres://driva:driva@localhost:5432/driva pnpm db:migrate
 pnpm dev:api                  # http://localhost:3000/v1/health
 pnpm dev:client               # Expo: press i, a or w
 pnpm dev:driver
+pnpm dev:admin                # http://localhost:3001
 ```
+
+### Staff accounts
+
+Staff cannot sign up. Create admins and VeriQuest officers from the command line:
+
+```sh
+DATABASE_URL=... pnpm --filter @driva/api staff:create --phone 0803 555 0100 --name "Ada Obi" --role vetting_officer
+```
+
+Roles are `admin` and `vetting_officer`. Both can work the vetting queue and approve drivers;
+only admins can mark a founding driver's vetting as free.
+
+### Files
+
+Driver documents and visit evidence are private. In development they are stored under
+`STORAGE_LOCAL_DIR` and served by the API through signed, expiring links. In production they go
+to S3 (`STORAGE_PROVIDER=s3`). The S3 bucket must block public access and allow `PUT` from the
+apps and the admin dashboard's origin in its CORS settings.
 
 With `SMS_PROVIDER=console` the API prints login codes to its log instead of texting them,
 for example `SMS to +*********0142: Your Driva code is 123456`. Production refuses this setting.

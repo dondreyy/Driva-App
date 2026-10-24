@@ -1,23 +1,19 @@
 import {
   AuthFlow,
-  Body,
   Button,
-  Card,
   deviceTokenStorage,
-  FormScreen,
   SessionProvider,
   ThemeProvider,
-  Title,
   useDrivaFonts,
   useSession,
   useTheme,
   Welcome,
 } from '@driva/ui';
-import { formatNigerianPhone } from '@driva/shared';
 import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { DriverHome } from './src/DriverHome';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
 const storage = deviceTokenStorage('driva-driver.refreshToken');
@@ -40,7 +36,7 @@ function Root() {
   const [signingIn, setSigningIn] = useState(false);
 
   if (status === 'loading') return <Loading />;
-  if (status === 'signed_in') return <Home />;
+  if (status === 'signed_in') return <DriverHome />;
   if (signingIn) return <AuthFlow app="driver" onBack={() => setSigningIn(false)} />;
   return (
     <>
@@ -54,26 +50,6 @@ function Root() {
         <Button title="Sign in or apply" onPress={() => setSigningIn(true)} />
       </Welcome>
     </>
-  );
-}
-
-function Home() {
-  const { user, signOut } = useSession();
-  if (!user) return null;
-  return (
-    <FormScreen footer={<Button title="Sign out" variant="ghost" onPress={() => void signOut()} />}>
-      <StatusBar style="auto" />
-      <View style={{ height: 24 }} />
-      <Title size={28}>Welcome, {user.fullName.split(' ')[0]}</Title>
-      <Body muted style={{ marginTop: 6, marginBottom: 18 }}>
-        Next you add your documents and guarantors so VeriQuest can start your checks. That arrives
-        in the next update.
-      </Body>
-      <Card>
-        <Body bold>{user.fullName}</Body>
-        <Body muted>{formatNigerianPhone(user.phone)}</Body>
-      </Card>
-    </FormScreen>
   );
 }
 

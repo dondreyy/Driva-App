@@ -16,7 +16,8 @@
     "db:rollback": "pnpm --filter @driva/api db:rollback",
     "dev:api": "pnpm --filter @driva/shared build && pnpm --filter @driva/api dev",
     "dev:client": "pnpm --filter @driva/client start",
-    "dev:driver": "pnpm --filter @driva/driver start"
+    "dev:driver": "pnpm --filter @driva/driver start",
+    "dev:admin": "pnpm --filter @driva/shared build && pnpm --filter @driva/admin dev"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
