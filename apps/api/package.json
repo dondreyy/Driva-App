@@ -1,0 +1,44 @@
+{
+  "name": "@driva/api",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node dist/main.js",
+    "dev": "ts-node-dev --respawn --transpile-only -r dotenv/config src/main.ts dotenv_config_path=../../.env",
+    "typecheck": "tsc --noEmit",
+    "test": "jest",
+    "db:migrate": "node-pg-migrate up -m ../../database/migrations --check-order",
+    "db:rollback": "node-pg-migrate down -m ../../database/migrations",
+    "db:new": "node-pg-migrate create -m ../../database/migrations --migration-file-language sql",
+    "staff:create": "tsc -p tsconfig.build.json && node dist/cli/create-staff.js"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1156.0",
+    "@aws-sdk/s3-request-presigner": "^3.1156.0",
+    "@driva/shared": "workspace:*",
+    "@nestjs/common": "^11.1.9",
+    "@nestjs/core": "^11.1.9",
+    "@nestjs/jwt": "^11.0.2",
+    "@nestjs/platform-express": "^11.1.9",
+    "@nestjs/throttler": "^6.7.1",
+    "pg": "^8.16.3",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@nestjs/testing": "^11.1.9",
+    "@types/express": "^5.0.6",
+    "@types/jest": "^29.5.14",
+    "@types/node": "^22.19.1",
+    "@types/pg": "^8.15.6",
+    "@types/supertest": "^6.0.3",
+    "dotenv": "^16.6.1",
+    "jest": "^29.7.0",
+    "node-pg-migrate": "^8.0.3",
+    "supertest": "^7.1.4",
+    "ts-jest": "^29.4.5",
+    "ts-node-dev": "^2.0.0"
+  }
+}

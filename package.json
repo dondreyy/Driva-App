@@ -1,0 +1,31 @@
+{
+  "name": "driva",
+  "private": true,
+  "packageManager": "pnpm@10.28.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "pnpm -r --if-present build",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "pnpm --filter @driva/shared build && pnpm -r --if-present typecheck",
+    "test": "pnpm -r --if-present test",
+    "db:migrate": "pnpm --filter @driva/api db:migrate",
+    "db:rollback": "pnpm --filter @driva/api db:rollback",
+    "dev:api": "pnpm --filter @driva/shared build && pnpm --filter @driva/api dev",
+    "dev:client": "pnpm --filter @driva/client start",
+    "dev:driver": "pnpm --filter @driva/driver start",
+    "dev:admin": "pnpm --filter @driva/shared build && pnpm --filter @driva/admin dev"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.1",
+    "eslint": "^9.39.1",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^16.5.0",
+    "prettier": "^3.6.2",
+    "typescript": "~5.9.3",
+    "typescript-eslint": "^8.46.4"
+  }
+}

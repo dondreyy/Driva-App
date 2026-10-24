@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_USER: driva
+          POSTGRES_PASSWORD: driva
+          POSTGRES_DB: driva_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U driva"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://driva:driva@localhost:5432/driva_test
+      REQUIRE_DATABASE: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm format:check
+      - run: pnpm typecheck
+      - name: Migrate up, down and up again
+        run: pnpm db:migrate && pnpm db:rollback && pnpm db:migrate
+      - run: pnpm test
+
+  apps:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Build the admin dashboard
+        run: pnpm --filter @driva/shared build && pnpm --filter @driva/admin build
+      # Bundling with Metro catches import and monorepo resolution problems that tsc misses.
+      - name: Bundle the client and driver apps
+        run: |
+          pnpm --filter @driva/client exec expo export --platform web --output-dir web-build
+          pnpm --filter @driva/driver exec expo export --platform web --output-dir web-build

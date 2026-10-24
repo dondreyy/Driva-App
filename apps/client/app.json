@@ -1,0 +1,14 @@
+{
+  "expo": {
+    "name": "Driva",
+    "slug": "driva",
+    "scheme": "driva",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "backgroundColor": "#0B2545",
+    "ios": { "bundleIdentifier": "ng.driva.app", "supportsTablet": false },
+    "android": { "package": "ng.driva.app" },
+    "plugins": ["expo-secure-store", "expo-font"]
+  }
+}
