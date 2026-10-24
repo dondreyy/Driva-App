@@ -23,7 +23,7 @@ We launch in Lagos only. Abuja and other major Nigerian cities follow. Build for
 - Currency is naira. Store every amount as an integer in kobo. Never use floats for money.
 - Ride with me: N3,500 per hour, minimum 2 hours.
 - Drive my car alone: N2,500 base plus N300 per km, rounded to the nearest N100.
-- Night trips add N1,500.
+- Night trips add N1,500. A trip is a night trip when its pickup time is from 9pm up to (not including) 5am, in the city's local time.
 - No booking fee for clients.
 - Driva commission: 15% of the fare for each driver's first 12 months from approval date, then 20%. The rate is per driver, not global. Store the rate on each trip at the time it is completed.
 - The fare is locked when a driver accepts. It never changes afterwards.

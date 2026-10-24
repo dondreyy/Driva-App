@@ -4,6 +4,7 @@ import {
   addMonthsUtc,
   commissionBpsFor,
   DEFAULT_PRICING_RULE,
+  isNightPickup,
   PricingError,
   quoteFare,
   splitFare,
@@ -104,6 +105,35 @@ describe('Night trips add N1,500', () => {
       nightKobo: naira(1_500),
       totalFareKobo: naira(7_600),
     });
+  });
+});
+
+describe('Night is a pickup from 9pm to 5am Lagos time', () => {
+  // Lagos is UTC+1 all year, so 20:00Z is 9pm in Lagos.
+  it.each([
+    ['2026-11-02T19:59:00Z', '8:59pm', false],
+    ['2026-11-02T20:00:00Z', '9:00pm', true],
+    ['2026-11-02T22:30:00Z', '11:30pm', true],
+    ['2026-11-02T23:00:00Z', 'midnight', true],
+    ['2026-11-03T03:59:00Z', '4:59am', true],
+    ['2026-11-03T04:00:00Z', '5:00am', false],
+    ['2026-11-03T06:00:00Z', '7:00am', false],
+    ['2026-11-03T11:00:00Z', 'noon', false],
+  ])('%s (%s in Lagos) is night: %s', (iso, _label, night) => {
+    expect(isNightPickup(new Date(iso))).toBe(night);
+  });
+
+  it('uses the city’s own time zone', () => {
+    // 9:30pm in Lagos is 8:30pm in London.
+    const pickup = new Date('2026-11-02T20:30:00Z');
+    expect(isNightPickup(pickup, 'Africa/Lagos')).toBe(true);
+    expect(isNightPickup(pickup, 'Europe/London')).toBe(false);
+  });
+
+  it('follows a city rule with a different window', () => {
+    const rule = { nightStartMinute: 22 * 60, nightEndMinute: 6 * 60 };
+    expect(isNightPickup(new Date('2026-11-02T20:30:00Z'), 'Africa/Lagos', rule)).toBe(false);
+    expect(isNightPickup(new Date('2026-11-03T04:30:00Z'), 'Africa/Lagos', rule)).toBe(true);
   });
 });
 
@@ -222,6 +252,8 @@ describe('Defaults match database/schema.sql pricing_rules', () => {
       soloPerKmKobo: naira(300),
       soloRoundingKobo: naira(100),
       nightSurchargeKobo: naira(1_500),
+      nightStartMinute: 21 * 60,
+      nightEndMinute: 5 * 60,
       commissionFirstYearBps: 1500,
       commissionAfterBps: 2000,
       firstYearMonths: 12,

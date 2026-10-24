@@ -14,6 +14,10 @@ export interface PricingRule {
   /** Drive my car alone fares are rounded to the nearest multiple of this. */
   soloRoundingKobo: Kobo;
   nightSurchargeKobo: Kobo;
+  /** Night runs from this local time (minutes after midnight, inclusive)... */
+  nightStartMinute: number;
+  /** ...until this local time the next morning (exclusive). */
+  nightEndMinute: number;
   /** Basis points, 1500 = 15.00%. */
   commissionFirstYearBps: number;
   commissionAfterBps: number;
@@ -29,6 +33,8 @@ export const DEFAULT_PRICING_RULE: Readonly<PricingRule> = Object.freeze({
   soloPerKmKobo: 30_000,
   soloRoundingKobo: 10_000,
   nightSurchargeKobo: 150_000,
+  nightStartMinute: 21 * 60, // 9pm
+  nightEndMinute: 5 * 60, // 5am
   commissionFirstYearBps: 1500,
   commissionAfterBps: 2000,
   firstYearMonths: 12,
@@ -46,6 +52,29 @@ export interface Quote {
 
 export class PricingError extends RangeError {
   override name = 'PricingError';
+}
+
+/**
+ * A trip is a night trip when its pickup time, in the city's own time zone, falls between
+ * 9pm (inclusive) and 5am (exclusive). The quote shows the surcharge before booking.
+ */
+export function isNightPickup(
+  pickupAt: Date,
+  timeZone = 'Africa/Lagos',
+  rule: Pick<PricingRule, 'nightStartMinute' | 'nightEndMinute'> = DEFAULT_PRICING_RULE,
+): boolean {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone,
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(pickupAt);
+  const hour = Number(parts.find((p) => p.type === 'hour')?.value);
+  const minute = Number(parts.find((p) => p.type === 'minute')?.value);
+  const local = hour * 60 + minute;
+  const { nightStartMinute: start, nightEndMinute: end } = rule;
+  // The window crosses midnight when it starts later in the day than it ends.
+  return start > end ? local >= start || local < end : local >= start && local < end;
 }
 
 /** Price a trip. No booking fee is ever added for clients. */
