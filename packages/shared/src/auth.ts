@@ -4,8 +4,11 @@ import { normalizeNigerianPhone } from './phone';
 /** Length of the SMS login code. */
 export const OTP_LENGTH = 6;
 
-/** Which mobile app the request comes from. It decides the role of a new account. */
-export const AUTH_APPS = ['client', 'driver'] as const;
+/**
+ * Which app the request comes from. It decides the role of a new account. The admin dashboard
+ * only signs in existing staff; staff accounts are never created by sign up.
+ */
+export const AUTH_APPS = ['client', 'driver', 'admin'] as const;
 export type AuthApp = (typeof AUTH_APPS)[number];
 
 export const USER_ROLES = ['client', 'driver', 'admin', 'vetting_officer'] as const;

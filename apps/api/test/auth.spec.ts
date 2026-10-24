@@ -2,44 +2,37 @@ import { INestApplication } from '@nestjs/common';
 import type { App } from 'supertest/types';
 import { Pool } from 'pg';
 import request from 'supertest';
-import { createTestApp, databaseUrl, describeDb, FakeSms } from './helpers';
-
-// Numbers in the +23490000xxxxx range are reserved for these tests and cleared before each run.
-let seq = 0;
-const nextPhone = () =>
-  `+2349000${String(Date.now() % 100000).padStart(5, '0')}${seq++}`.slice(0, 14);
+import {
+  clearTestUsers,
+  createTestApp,
+  databaseUrl,
+  describeDb,
+  FakeSms,
+  Flows,
+  testPhone as nextPhone,
+} from './helpers';
 
 describeDb('Auth: OTP sign up and sign in', () => {
   let app: INestApplication;
   let server: App;
   let pool: Pool;
+  let flows: Flows;
   const sms = new FakeSms();
 
   beforeAll(async () => {
     pool = new Pool({ connectionString: databaseUrl });
-    await pool.query(`DELETE FROM users WHERE phone LIKE '+2349000%'`);
-    await pool.query(`DELETE FROM otp_codes WHERE phone LIKE '+2349000%'`);
+    await clearTestUsers(pool);
     app = await createTestApp(sms);
     server = app.getHttpServer();
+    flows = new Flows(server, pool, sms);
   });
 
   afterAll(async () => {
-    await app.close();
+    await app?.close();
     await pool.end();
   });
 
-  /** Asks for a code, skipping the resend cooldown so tests do not wait 60 seconds. */
-  async function requestCode(phone: string): Promise<string> {
-    await pool.query(
-      `UPDATE otp_codes SET created_at = created_at - interval '2 minutes' WHERE phone = $1`,
-      [phone],
-    );
-    await request(server)
-      .post('/v1/auth/otp/request')
-      .send({ phone })
-      .expect(200, { expiresIn: 300 });
-    return sms.lastCode(phone);
-  }
+  const requestCode = (phone: string) => flows.requestCode(phone);
 
   async function signUp(phone: string, app: 'client' | 'driver' = 'client') {
     const code = await requestCode(phone);
@@ -85,9 +78,14 @@ describeDb('Auth: OTP sign up and sign in', () => {
   });
 
   it('accepts the number however it is typed', async () => {
-    const phone = '+2349000777001';
+    const phone = nextPhone();
+    const local = `0${phone.slice(4)}`; // +2349000123456 -> 09000123456
     await requestCode(phone);
-    await request(server).post('/v1/auth/otp/request').send({ phone: '0900 077 7001' }).expect(429);
+    // Typed the local way it is the same number, so the 60 second wait applies to it.
+    await request(server)
+      .post('/v1/auth/otp/request')
+      .send({ phone: `${local.slice(0, 4)} ${local.slice(4, 7)} ${local.slice(7)}` })
+      .expect(429);
     expect(sms.sent.at(-1)?.phone).toBe(phone);
   });
 

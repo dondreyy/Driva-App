@@ -14,8 +14,19 @@ import { toMe, UsersService } from '../users/users.service';
 import { OtpService } from './otp.service';
 import { TokensService } from './tokens.service';
 
-/** The role an account must have to use each mobile app, and the role a new account gets. */
-const APP_ROLE: Record<AuthApp, UserRole> = { client: 'client', driver: 'driver' };
+/** The roles that may sign in to each app. */
+const APP_ROLES: Record<AuthApp, UserRole[]> = {
+  client: ['client'],
+  driver: ['driver'],
+  admin: ['admin', 'vetting_officer'],
+};
+
+/** The role a new account gets. Staff accounts are never created by sign up. */
+const SIGNUP_ROLE: Record<AuthApp, UserRole | null> = {
+  client: 'client',
+  driver: 'driver',
+  admin: null,
+};
 
 const WRONG_APP: Record<UserRole, string> = {
   client: 'This number has a client account. Use the Driva app to sign in.',
@@ -23,6 +34,8 @@ const WRONG_APP: Record<UserRole, string> = {
   admin: 'Staff accounts sign in on the admin dashboard.',
   vetting_officer: 'Staff accounts sign in on the admin dashboard.',
 };
+
+const NO_STAFF_ACCOUNT = 'There is no staff account for this number. Ask a Driva admin to add you.';
 
 @Injectable()
 export class AuthService {
@@ -41,13 +54,16 @@ export class AuthService {
     await this.otp.verify(phone, code);
     const user = await this.users.findByPhone(this.pool, phone);
     if (!user) {
+      if (!SIGNUP_ROLE[app]) throw new ForbiddenException(NO_STAFF_ACCOUNT);
       return {
         status: 'signup_required',
         signupToken: await this.tokens.signSignupToken({ phone, app }),
       };
     }
     if (user.deleted_at) throw new ForbiddenException('This account has been closed.');
-    if (user.role !== APP_ROLE[app]) throw new ForbiddenException(WRONG_APP[user.role]);
+    if (!APP_ROLES[app].includes(user.role)) {
+      throw new ForbiddenException(app === 'admin' ? NO_STAFF_ACCOUNT : WRONG_APP[user.role]);
+    }
 
     await this.users.markPhoneVerified(this.pool, user.id);
     const tokens = await this.tokens.issue(this.pool, { id: user.id, role: user.role }, app);
@@ -56,9 +72,11 @@ export class AuthService {
 
   async signup(body: ParsedSignup): Promise<SignupResult> {
     const { phone, app } = await this.tokens.verifySignupToken(body.signupToken);
+    const role = SIGNUP_ROLE[app];
+    if (!role) throw new ForbiddenException(NO_STAFF_ACCOUNT);
     return inTransaction(this.pool, async (db) => {
       const user = await this.users.create(db, {
-        role: APP_ROLE[app],
+        role,
         phone,
         fullName: body.fullName,
         emergencyContactName: body.emergencyContactName,

@@ -24,7 +24,10 @@ const RESEND_SECONDS = 60;
 
 type Step = 'phone' | 'code' | 'profile';
 
-const COPY: Record<AuthApp, { profileSub: string; done: string }> = {
+/** The mobile apps. Staff sign in on the admin dashboard instead. */
+export type MobileApp = Exclude<AuthApp, 'admin'>;
+
+const COPY: Record<MobileApp, { profileSub: string; done: string }> = {
   client: {
     profileSub:
       'We use your name on your trips. Your emergency contact is alerted if you press the emergency button.',
@@ -40,7 +43,7 @@ const COPY: Record<AuthApp, { profileSub: string; done: string }> = {
  * Phone number, then SMS code, then (for a new number) name and consent.
  * The same flow signs people in and signs them up.
  */
-export function AuthFlow({ app, onBack }: { app: AuthApp; onBack: () => void }) {
+export function AuthFlow({ app, onBack }: { app: MobileApp; onBack: () => void }) {
   const { api, signIn } = useSession();
   const [step, setStep] = useState<Step>('phone');
   const [phoneInput, setPhoneInput] = useState('');

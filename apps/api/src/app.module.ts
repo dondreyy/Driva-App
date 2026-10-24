@@ -4,8 +4,11 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AuthModule } from './auth/auth.module';
 import { ConfigModule } from './config/config.module';
 import { DatabaseModule } from './database/database.module';
+import { DriversModule } from './drivers/drivers.module';
 import { HealthController } from './health/health.controller';
+import { StorageModule } from './storage/storage.module';
 import { UsersModule } from './users/users.module';
+import { VettingModule } from './vetting/vetting.module';
 
 @Module({
   imports: [
@@ -17,8 +20,11 @@ import { UsersModule } from './users/users.module';
       // Jest sets NODE_ENV=test. The throttling test switches it off to check the limits.
       skipIf: () => process.env.NODE_ENV === 'test',
     }),
+    StorageModule,
     AuthModule,
     UsersModule,
+    DriversModule,
+    VettingModule,
   ],
   controllers: [HealthController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],

@@ -10,9 +10,12 @@
     "test": "jest",
     "db:migrate": "node-pg-migrate up -m ../../database/migrations --check-order",
     "db:rollback": "node-pg-migrate down -m ../../database/migrations",
-    "db:new": "node-pg-migrate create -m ../../database/migrations --migration-file-language sql"
+    "db:new": "node-pg-migrate create -m ../../database/migrations --migration-file-language sql",
+    "staff:create": "tsc -p tsconfig.build.json && node dist/cli/create-staff.js"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1156.0",
+    "@aws-sdk/s3-request-presigner": "^3.1156.0",
     "@driva/shared": "workspace:*",
     "@nestjs/common": "^11.1.9",
     "@nestjs/core": "^11.1.9",
@@ -26,6 +29,7 @@
   },
   "devDependencies": {
     "@nestjs/testing": "^11.1.9",
+    "@types/express": "^5.0.6",
     "@types/jest": "^29.5.14",
     "@types/node": "^22.19.1",
     "@types/pg": "^8.15.6",

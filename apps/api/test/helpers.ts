@@ -1,4 +1,9 @@
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { INestApplication } from '@nestjs/common';
+import { Pool } from 'pg';
+import request from 'supertest';
+import type { App } from 'supertest/types';
 import { Test } from '@nestjs/testing';
 import { AppModule } from '../src/app.module';
 import { SMS_SENDER, SmsSender } from '../src/auth/sms/sms-sender';
@@ -13,6 +18,8 @@ export const describeDb = databaseUrl ? describe : describe.skip;
 
 process.env.JWT_SECRET ??= 'test-jwt-secret-that-is-at-least-32-chars';
 process.env.OTP_PEPPER ??= 'test-otp-pepper-that-is-at-least-32-chars';
+process.env.DATA_ENCRYPTION_KEY ??= Buffer.alloc(32, 9).toString('base64');
+process.env.STORAGE_LOCAL_DIR ??= join(tmpdir(), 'driva-test-storage');
 
 /** Captures texts instead of sending them, so tests can read the login code. */
 export class FakeSms implements SmsSender {
@@ -38,4 +45,66 @@ export async function createTestApp(sms: SmsSender = new FakeSms()): Promise<INe
   const app = configureApp(moduleRef.createNestApplication());
   await app.init();
   return app;
+}
+
+/** Sign up and sign in through the real API, as the apps do. */
+export class Flows {
+  constructor(
+    private readonly server: App,
+    private readonly pool: Pool,
+    private readonly sms: FakeSms,
+  ) {}
+
+  /** Asks for a code, skipping the resend wait so tests do not sleep for 60 seconds. */
+  async requestCode(phone: string): Promise<string> {
+    await this.pool.query(
+      `UPDATE otp_codes SET created_at = created_at - interval '2 minutes' WHERE phone = $1`,
+      [phone],
+    );
+    await request(this.server).post('/v1/auth/otp/request').send({ phone }).expect(200);
+    return this.sms.lastCode(phone);
+  }
+
+  async signUp(phone: string, app: 'client' | 'driver' = 'client', fullName = 'Tolu Adebayo') {
+    const code = await this.requestCode(phone);
+    const verify = await request(this.server)
+      .post('/v1/auth/otp/verify')
+      .send({ phone, code, app })
+      .expect(200);
+    const signup = await request(this.server)
+      .post('/v1/auth/signup')
+      .send({ signupToken: verify.body.signupToken, fullName, consent: true })
+      .expect(201);
+    return signup.body as { accessToken: string; refreshToken: string; user: { id: string } };
+  }
+
+  /** Creates a staff account directly, as the staff:create command does, and signs in. */
+  async staff(phone: string, role: 'admin' | 'vetting_officer', fullName = 'Ada Obi') {
+    const { rows } = await this.pool.query<{ id: string }>(
+      `INSERT INTO users (role, phone, full_name) VALUES ($1, $2, $3) RETURNING id`,
+      [role, phone, fullName],
+    );
+    const code = await this.requestCode(phone);
+    const res = await request(this.server)
+      .post('/v1/auth/otp/verify')
+      .send({ phone, code, app: 'admin' })
+      .expect(200);
+    return { id: rows[0]!.id, accessToken: res.body.accessToken as string };
+  }
+}
+
+let phoneSeq = 0;
+/** Numbers in the +2349000 range belong to tests and are deleted at the start of a run. */
+export function testPhone(): string {
+  phoneSeq += 1;
+  return `+2349000${String(process.pid % 1000).padStart(3, '0')}${String(phoneSeq).padStart(3, '0')}`;
+}
+
+export async function clearTestUsers(pool: Pool): Promise<void> {
+  // Drivers first: their vetting checks point at test officers.
+  await pool.query(
+    `DELETE FROM drivers WHERE user_id IN (SELECT id FROM users WHERE phone LIKE '+2349000%')`,
+  );
+  await pool.query(`DELETE FROM users WHERE phone LIKE '+2349000%'`);
+  await pool.query(`DELETE FROM otp_codes WHERE phone LIKE '+2349000%'`);
 }

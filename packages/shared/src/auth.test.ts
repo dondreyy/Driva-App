@@ -44,7 +44,7 @@ describe('request schemas', () => {
       otpVerifySchema.parse({ phone: '08035550142', code: '1234', app: 'client' }),
     ).toThrow();
     expect(() =>
-      otpVerifySchema.parse({ phone: '08035550142', code: '123456', app: 'admin' }),
+      otpVerifySchema.parse({ phone: '08035550142', code: '123456', app: 'staff' }),
     ).toThrow();
   });
 

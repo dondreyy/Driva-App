@@ -9,6 +9,11 @@ export interface AppConfig {
   sms:
     | { provider: 'console' }
     | { provider: 'termii'; apiKey: string; senderId: string; baseUrl: string };
+  /** AES-256 key for NINs, licence numbers and bank details at rest. */
+  dataEncryptionKey: Buffer;
+  storage:
+    | { provider: 'local'; dir: string; publicUrl: string }
+    | { provider: 's3'; bucket: string; region: string };
 }
 
 export const APP_CONFIG = Symbol('APP_CONFIG');
@@ -39,6 +44,33 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     throw new Error(`SMS_PROVIDER must be console or termii, got ${provider}`);
   }
 
+  const storageProvider = env.STORAGE_PROVIDER ?? (production ? 's3' : 'local');
+  let storage: AppConfig['storage'];
+  if (storageProvider === 'local') {
+    // Files on the API server's disk. Fine for development and tests, never for production.
+    if (production) throw new Error('STORAGE_PROVIDER=local is not allowed in production');
+    storage = {
+      provider: 'local',
+      dir: env.STORAGE_LOCAL_DIR ?? '.storage',
+      publicUrl: (env.PUBLIC_API_URL ?? `http://localhost:${port}`).replace(/\/$/, ''),
+    };
+  } else if (storageProvider === 's3') {
+    storage = {
+      provider: 's3',
+      bucket: required(env, 'S3_BUCKET'),
+      region: required(env, 'AWS_REGION'),
+    };
+  } else {
+    throw new Error(`STORAGE_PROVIDER must be local or s3, got ${storageProvider}`);
+  }
+
+  const dataEncryptionKey = Buffer.from(required(env, 'DATA_ENCRYPTION_KEY'), 'base64');
+  if (dataEncryptionKey.length !== 32) {
+    throw new Error(
+      'DATA_ENCRYPTION_KEY must be 32 bytes, base64 encoded (openssl rand -base64 32)',
+    );
+  }
+
   return {
     nodeEnv,
     port,
@@ -46,6 +78,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     jwtSecret: secret(env, 'JWT_SECRET'),
     otpPepper: secret(env, 'OTP_PEPPER'),
     sms,
+    dataEncryptionKey,
+    storage,
   };
 }
 
