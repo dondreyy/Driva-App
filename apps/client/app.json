@@ -7,8 +7,22 @@
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "backgroundColor": "#0B2545",
-    "ios": { "bundleIdentifier": "ng.driva.app", "supportsTablet": false },
-    "android": { "package": "ng.driva.app" },
-    "plugins": ["expo-secure-store", "expo-font"]
+    "ios": {
+      "bundleIdentifier": "ng.driva.app",
+      "supportsTablet": false
+    },
+    "android": {
+      "package": "ng.driva.app"
+    },
+    "plugins": [
+      "expo-secure-store",
+      "expo-font",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Driva uses your location to set your pickup point."
+        }
+      ]
+    ]
   }
 }

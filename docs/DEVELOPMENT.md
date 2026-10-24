@@ -28,6 +28,19 @@ DATABASE_URL=... pnpm --filter @driva/api staff:create --phone 0803 555 0100 --n
 Roles are `admin` and `vetting_officer`. Both can work the vetting queue and approve drivers;
 only admins can mark a founding driver's vetting as free.
 
+### Maps and prices
+
+Quotes are always priced by the API. With `MAPS_PROVIDER=dev` the API offers a few sample Lagos
+places (search "Victoria", "Ikoyi", "Ajah", "Airport") and estimates road distance as 1.3 times
+the straight line, so development prices are close but not real. Production needs
+`MAPS_PROVIDER=google` and a `GOOGLE_MAPS_API_KEY` with Places API (New), Geocoding API and Routes
+API enabled. Restrict the key to the API server's IP addresses: the apps never see it.
+
+Pickups must be inside a live city's service area (`cities.service_area`). Lagos covers the
+version 1 pilot: Ikoyi, Victoria Island and the Lekki corridor to Ajah. Destinations can be
+anywhere. In a browser, set your location to Lekki (for example in Chrome's sensors panel) to
+try booking.
+
 ### Files
 
 Driver documents and visit evidence are private. In development they are stored under
