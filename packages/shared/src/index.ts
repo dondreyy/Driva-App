@@ -7,3 +7,4 @@ export * from './matching';
 export * from './money';
 export * from './phone';
 export * from './pricing';
+export * from './trip';

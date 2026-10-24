@@ -20,6 +20,8 @@ describe('loadConfig', () => {
       storage: { provider: 'local', dir: '.storage', publicUrl: 'http://localhost:4000' },
       maps: { provider: 'dev' },
       matchingWorker: true,
+      publicWebUrl: 'http://localhost:8081',
+      corsOrigins: [],
     });
   });
 

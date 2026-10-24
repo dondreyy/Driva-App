@@ -32,5 +32,6 @@ import { TokensService } from './tokens.service';
     { provide: APP_GUARD, useClass: AccessTokenGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
   ],
+  exports: [TokensService],
 })
 export class AuthModule {}

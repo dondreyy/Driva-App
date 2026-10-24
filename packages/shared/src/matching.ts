@@ -3,6 +3,7 @@ import { latLngSchema, Place } from './booking';
 import type { BookingStatus } from './constants';
 import type { Kobo } from './money';
 import type { TripType } from './pricing';
+import type { TripLocation, TripPhoto } from './trip';
 
 /** How long a driver has to accept a request. */
 export const OFFER_SECONDS = 30;
@@ -75,7 +76,20 @@ export interface BookingView {
   matchingDeadline: string | null;
   createdAt: string;
   acceptedAt: string | null;
+  arrivedAt: string | null;
+  startedAt: string | null;
+  endedAt: string | null;
   cancelledAt: string | null;
+  /** For the client only, from acceptance until the driver enters it. */
+  tripPin: string | null;
+  pinVerified: boolean;
+  /** Drive my car alone: the five photos before and after. */
+  photos: TripPhoto[];
+  /** The driver's latest position while the trip is open. */
+  driverLocation: TripLocation | null;
+  /** For the driver only, once the trip is complete: the rate and fee stored on the trip. */
+  commissionBps: number | null;
+  commissionKobo: Kobo | null;
 }
 
 export interface DriverOffer {

@@ -5,11 +5,13 @@ import { AuthModule } from './auth/auth.module';
 import { ConfigModule } from './config/config.module';
 import { DatabaseModule } from './database/database.module';
 import { DriversModule } from './drivers/drivers.module';
+import { EventsModule } from './events/events.module';
 import { HealthController } from './health/health.controller';
 import { MapsModule } from './maps/maps.module';
 import { MatchingModule } from './matching/matching.module';
 import { QuotesModule } from './quotes/quotes.module';
 import { StorageModule } from './storage/storage.module';
+import { TripsModule } from './trips/trips.module';
 import { UsersModule } from './users/users.module';
 import { VehiclesController } from './vehicles/vehicles.controller';
 import { VettingModule } from './vetting/vetting.module';
@@ -32,6 +34,8 @@ import { VettingModule } from './vetting/vetting.module';
     MapsModule,
     QuotesModule,
     MatchingModule,
+    TripsModule,
+    EventsModule,
   ],
   controllers: [HealthController, VehiclesController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],

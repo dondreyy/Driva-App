@@ -6,10 +6,18 @@ import {
   Inject,
   Injectable,
 } from '@nestjs/common';
-import { canGoOnline, DriverStatus, LatLng, ShiftView, UploadTicket } from '@driva/shared';
+import {
+  canGoOnline,
+  DriverStatus,
+  LatLng,
+  ShiftView,
+  SOCKET_EVENTS,
+  UploadTicket,
+} from '@driva/shared';
 import { Pool } from 'pg';
 import { writeAudit } from '../common/audit';
 import { inTransaction, PG_POOL } from '../database/database.module';
+import { EventsService, Note } from '../events/events.service';
 import { FILE_STORAGE, FileStorage } from '../storage/file-storage';
 import { MatchingService } from './matching.service';
 
@@ -23,6 +31,7 @@ export class ShiftsService {
     @Inject(PG_POOL) private readonly pool: Pool,
     @Inject(FILE_STORAGE) private readonly storage: FileStorage,
     private readonly matching: MatchingService,
+    private readonly events: EventsService,
   ) {}
 
   async view(driverId: string): Promise<ShiftView> {
@@ -96,7 +105,7 @@ export class ShiftsService {
     const view = await this.view(driverId);
     if (view.activeBookingId)
       throw new ConflictException('Finish your current trip before going offline');
-    await inTransaction(this.pool, async (db) => {
+    const notes = await inTransaction(this.pool, async (db) => {
       await db.query(
         `UPDATE driver_shifts SET ended_at = now() WHERE driver_id = $1 AND ended_at IS NULL`,
         [driverId],
@@ -114,11 +123,18 @@ export class ShiftsService {
         entity: 'driver',
         entityId: driverId,
       });
-      for (const r of rows) await this.matching.dispatch(db, r.booking_id);
+      const out: Note[] = [];
+      for (const r of rows) out.push(...(await this.matching.dispatch(db, r.booking_id)));
+      return out;
     });
+    this.events.send(notes);
     return this.view(driverId);
   }
 
+  /**
+   * The driver's position. While they are on a trip it is also recorded on the trip and sent
+   * to the client live, for tracking and the share link.
+   */
   async location(driverId: string, at: LatLng & { heading?: number }): Promise<void> {
     const { rowCount } = await this.pool.query(
       `UPDATE driver_presence SET location = ST_SetSRID(ST_MakePoint($2, $3), 4326)::geography,
@@ -127,6 +143,29 @@ export class ShiftsService {
       [driverId, ...point(at), at.heading ?? null],
     );
     if (!rowCount) throw new ConflictException('Go online first');
+
+    const trip = await this.pool.query<{ id: string; client_id: string; recorded_at: Date }>(
+      `INSERT INTO trip_locations (booking_id, location, heading)
+       SELECT b.id, ST_SetSRID(ST_MakePoint($2, $3), 4326)::geography, $4
+       FROM bookings b
+       WHERE b.driver_id = $1 AND b.status IN ('accepted', 'driver_arrived', 'in_progress')
+       RETURNING booking_id AS id,
+         (SELECT client_id FROM bookings WHERE id = booking_id) AS client_id, recorded_at`,
+      [driverId, ...point(at), at.heading ?? null],
+    );
+    const t = trip.rows[0];
+    if (t) {
+      this.events.send([
+        {
+          to: t.client_id,
+          event: SOCKET_EVENTS.location,
+          bookingId: t.id,
+          lat: at.lat,
+          lng: at.lng,
+          at: t.recorded_at.toISOString(),
+        },
+      ]);
+    }
   }
 
   private async requireCanGoOnline(driverId: string): Promise<void> {

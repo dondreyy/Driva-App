@@ -10,7 +10,9 @@ import { BookingView, MATCHING_WINDOW_MINUTES } from '@driva/shared';
 import { Pool } from 'pg';
 import { AuthUser } from '../auth/decorators';
 import { writeAudit } from '../common/audit';
+import { FieldEncryption } from '../crypto/field-encryption';
 import { inTransaction, PG_POOL } from '../database/database.module';
+import { EventsService } from '../events/events.service';
 import { MatchingService } from '../matching/matching.service';
 import { FILE_STORAGE, FileStorage } from '../storage/file-storage';
 import { loadBookingView } from './booking-view';
@@ -25,6 +27,8 @@ export class BookingsService {
     @Inject(PG_POOL) private readonly pool: Pool,
     @Inject(FILE_STORAGE) private readonly storage: FileStorage,
     private readonly matching: MatchingService,
+    private readonly crypto: FieldEncryption,
+    private readonly events: EventsService,
   ) {}
 
   /**
@@ -96,7 +100,9 @@ export class BookingsService {
     });
     // Ask the first driver straight away rather than waiting for the next sweep.
     if (!(await this.isScheduledLater(bookingId))) {
-      await inTransaction(this.pool, (db) => this.matching.dispatch(db, bookingId));
+      this.events.send(
+        await inTransaction(this.pool, (db) => this.matching.dispatch(db, bookingId)),
+      );
     }
     return this.get(client, bookingId);
   }
@@ -112,16 +118,16 @@ export class BookingsService {
   }
 
   async get(viewer: AuthUser, bookingId: string): Promise<BookingView> {
-    const view = await loadBookingView(this.pool, this.storage, bookingId, viewer);
+    const view = await loadBookingView(this.pool, this.storage, this.crypto, bookingId, viewer);
     if (!view) throw new NotFoundException('Booking not found');
     return view;
   }
 
   /** The client cancels before the driver arrives. No cancellation fee for now. */
   async cancel(client: AuthUser, bookingId: string, reason?: string): Promise<BookingView> {
-    await inTransaction(this.pool, async (db) => {
-      const { rows } = await db.query<{ status: string }>(
-        `SELECT status FROM bookings WHERE id = $1 AND client_id = $2 FOR UPDATE`,
+    const told = await inTransaction(this.pool, async (db) => {
+      const { rows } = await db.query<{ status: string; driver_id: string | null }>(
+        `SELECT status, driver_id FROM bookings WHERE id = $1 AND client_id = $2 FOR UPDATE`,
         [bookingId, client.id],
       );
       const status = rows[0]?.status;
@@ -138,8 +144,9 @@ export class BookingsService {
         [bookingId, reason ?? null],
       );
       // Take the request off the driver's screen.
-      await db.query(
-        `UPDATE booking_offers SET status = 'expired', responded_at = now() WHERE booking_id = $1 AND status = 'offered'`,
+      const withdrawn = await db.query<{ driver_id: string }>(
+        `UPDATE booking_offers SET status = 'expired', responded_at = now()
+         WHERE booking_id = $1 AND status = 'offered' RETURNING driver_id`,
         [bookingId],
       );
       await writeAudit(db, {
@@ -149,7 +156,9 @@ export class BookingsService {
         entityId: bookingId,
         details: { from: status, to: 'cancelled', byRole: 'client' },
       });
+      return [rows[0]!.driver_id, ...withdrawn.rows.map((r) => r.driver_id)];
     });
+    this.events.send(this.events.bookingChanged(bookingId, told));
     return this.get(client, bookingId);
   }
 

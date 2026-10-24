@@ -1,3 +1,4 @@
+import { randomInt } from 'node:crypto';
 import { ConflictException, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import {
   BookingView,
@@ -7,13 +8,17 @@ import {
   OFFER_SECONDS,
   SCHEDULED_MATCHING_LEAD_MINUTES,
   LOCATION_STALE_SECONDS,
+  SOCKET_EVENTS,
   splitFare,
+  TRIP_PIN_LENGTH,
   TripType,
   VETTING_VALID_MONTHS,
 } from '@driva/shared';
 import { Pool, PoolClient } from 'pg';
 import { loadBookingView } from '../bookings/booking-view';
 import { writeAudit } from '../common/audit';
+import { FieldEncryption } from '../crypto/field-encryption';
+import { EventsService, Note } from '../events/events.service';
 import { inTransaction, PG_POOL } from '../database/database.module';
 import { FILE_STORAGE, FileStorage } from '../storage/file-storage';
 
@@ -30,6 +35,8 @@ export class MatchingService {
   constructor(
     @Inject(PG_POOL) private readonly pool: Pool,
     @Inject(FILE_STORAGE) private readonly storage: FileStorage,
+    private readonly crypto: FieldEncryption,
+    private readonly events: EventsService,
   ) {}
 
   /**
@@ -51,21 +58,25 @@ export class MatchingService {
     );
     for (const { id } of rows) {
       try {
-        await inTransaction(this.pool, (db) => this.dispatch(db, id));
+        this.events.send(await inTransaction(this.pool, (db) => this.dispatch(db, id)));
       } catch (err) {
         this.logger.error(`Matching failed for booking ${id}: ${(err as Error).message}`);
       }
     }
   }
 
-  /** Offers the booking to the next driver, or gives up when its time has run out. */
-  async dispatch(db: PoolClient, bookingId: string): Promise<void> {
+  /**
+   * Offers the booking to the next driver, or gives up when its time has run out. Returns the
+   * events to send once the caller's transaction commits.
+   */
+  async dispatch(db: PoolClient, bookingId: string): Promise<Note[]> {
     const locked = await db.query<{
       status: string;
+      client_id: string;
       past_deadline: boolean;
       has_open_offer: boolean;
     }>(
-      `SELECT b.status, b.matching_deadline <= now() AS past_deadline,
+      `SELECT b.status, b.client_id, b.matching_deadline <= now() AS past_deadline,
               EXISTS (SELECT 1 FROM booking_offers o WHERE o.booking_id = b.id AND o.status = 'offered') AS has_open_offer
        FROM bookings b WHERE b.id = $1 FOR UPDATE SKIP LOCKED`,
       [bookingId],
@@ -73,7 +84,8 @@ export class MatchingService {
     const booking = locked.rows[0];
     // Locked by another server, already matched or cancelled, or a request is already out.
     if (!booking || !['requested', 'matching'].includes(booking.status) || booking.has_open_offer)
-      return;
+      return [];
+    const notes: Note[] = [];
 
     const driver = await db.query<{ user_id: string }>(
       `SELECT d.user_id
@@ -98,14 +110,17 @@ export class MatchingService {
     const driverId = driver.rows[0]?.user_id;
 
     if (driverId) {
-      await db.query(
+      const offer = await db.query<{ id: string }>(
         `INSERT INTO booking_offers (booking_id, driver_id, expires_at)
-         VALUES ($1, $2, now() + make_interval(secs => $3))`,
+         VALUES ($1, $2, now() + make_interval(secs => $3)) RETURNING id`,
         [bookingId, driverId, OFFER_SECONDS],
       );
-      if (booking.status === 'requested')
+      notes.push({ to: driverId, event: SOCKET_EVENTS.offer, offerId: offer.rows[0]!.id });
+      if (booking.status === 'requested') {
         await this.setStatus(db, bookingId, 'requested', 'matching');
-      return;
+        notes.push(...this.events.bookingChanged(bookingId, [booking.client_id]));
+      }
+      return notes;
     }
     if (booking.past_deadline) {
       await db.query(`UPDATE bookings SET status = 'no_driver' WHERE id = $1`, [bookingId]);
@@ -116,11 +131,14 @@ export class MatchingService {
         entityId: bookingId,
         details: { from: booking.status },
       });
-      return;
+      return this.events.bookingChanged(bookingId, [booking.client_id]);
     }
     // Nobody free right now. Keep looking on the next sweep until the deadline.
-    if (booking.status === 'requested')
+    if (booking.status === 'requested') {
       await this.setStatus(db, bookingId, 'requested', 'matching');
+      return this.events.bookingChanged(bookingId, [booking.client_id]);
+    }
+    return [];
   }
 
   /** The request in front of this driver, if any. */
@@ -192,15 +210,16 @@ export class MatchingService {
 
   /** The driver takes the trip. The fare locks now and never changes. */
   async accept(driverId: string, offerId: string): Promise<BookingView> {
-    const bookingId = await inTransaction(this.pool, async (db) => {
+    const { bookingId, clientId } = await inTransaction(this.pool, async (db) => {
       const { rows } = await db.query<{
         booking_id: string;
+        client_id: string;
         status: string;
         expired: boolean;
         booking_status: string;
         total_fare_kobo: string;
       }>(
-        `SELECT o.booking_id, o.status, o.expires_at <= now() AS expired, b.status AS booking_status,
+        `SELECT o.booking_id, b.client_id, o.status, o.expires_at <= now() AS expired, b.status AS booking_status,
                 b.total_fare_kobo
          FROM booking_offers o JOIN bookings b ON b.id = o.booking_id
          WHERE o.id = $1 AND o.driver_id = $2
@@ -220,10 +239,13 @@ export class MatchingService {
         [offerId],
       );
       try {
+        // The PIN the client reads out at pickup. Random per trip, stored encrypted.
+        const pin = String(randomInt(0, 10 ** TRIP_PIN_LENGTH)).padStart(TRIP_PIN_LENGTH, '0');
         await db.query(
-          `UPDATE bookings SET status = 'accepted', driver_id = $2, accepted_at = now(), fare_locked_at = now()
+          `UPDATE bookings SET status = 'accepted', driver_id = $2, accepted_at = now(), fare_locked_at = now(),
+             trip_pin_encrypted = $3
            WHERE id = $1`,
-          [offer.booking_id, driverId],
+          [offer.booking_id, driverId, this.crypto.encrypt(pin)],
         );
       } catch (err) {
         if ((err as { constraint?: string }).constraint === 'one_active_trip_per_driver') {
@@ -243,9 +265,10 @@ export class MatchingService {
           lockedFareKobo: Number(offer.total_fare_kobo),
         },
       });
-      return offer.booking_id;
+      return { bookingId: offer.booking_id, clientId: offer.client_id };
     });
-    return (await loadBookingView(this.pool, this.storage, bookingId, {
+    this.events.send(this.events.bookingChanged(bookingId, [clientId]));
+    return (await loadBookingView(this.pool, this.storage, this.crypto, bookingId, {
       id: driverId,
       role: 'driver',
     }))!;
@@ -253,7 +276,7 @@ export class MatchingService {
 
   /** The driver passes. The next driver is asked straight away. */
   async decline(driverId: string, offerId: string): Promise<void> {
-    await inTransaction(this.pool, async (db) => {
+    const notes = await inTransaction(this.pool, async (db) => {
       const { rows } = await db.query<{ booking_id: string }>(
         `UPDATE booking_offers SET status = 'declined', responded_at = now()
          WHERE id = $1 AND driver_id = $2 AND status = 'offered'
@@ -261,8 +284,9 @@ export class MatchingService {
         [offerId, driverId],
       );
       if (!rows[0]) throw new NotFoundException('Request not found or already answered');
-      await this.dispatch(db, rows[0].booking_id);
+      return this.dispatch(db, rows[0].booking_id);
     });
+    this.events.send(notes);
   }
 
   private async setStatus(db: PoolClient, bookingId: string, from: string, to: string) {
